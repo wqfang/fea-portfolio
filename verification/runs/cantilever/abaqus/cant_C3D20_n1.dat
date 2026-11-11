@@ -1,6 +1,6 @@
 1
 
-   Abaqus Learning Edition 2026                                  Date 11-Nov-2026   Time 02:16:50
+   Abaqus Learning Edition 2026                                  Date 11-Nov-2026   Time 02:34:10
    
 
 
@@ -63,10 +63,10 @@
        USER TIME (SEC)      =     0.10    
        SYSTEM TIME (SEC)    =      0.0    
        TOTAL CPU TIME (SEC) =     0.10    
-       WALLCLOCK TIME (SEC) =            3
+       WALLCLOCK TIME (SEC) =            1
 1
 
-   Abaqus Learning Edition 2026                                  Date 11-Nov-2026   Time 02:17:07
+   Abaqus Learning Edition 2026                                  Date 11-Nov-2026   Time 02:34:11
    
 
      Cantilever benchmark, C3D20, level 1, 248 nodes                                           STEP    1  INCREMENT    1
@@ -172,4 +172,4 @@
        USER TIME (SEC)      =     0.20    
        SYSTEM TIME (SEC)    =     0.10    
        TOTAL CPU TIME (SEC) =     0.30    
-       WALLCLOCK TIME (SEC) =            3
+       WALLCLOCK TIME (SEC) =            1
