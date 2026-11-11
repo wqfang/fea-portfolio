@@ -1,0 +1,26 @@
+# Solver scratch files; keep decks, .dat, results.csv and plots
+runs/**/*.frd
+runs/**/*.sta
+runs/**/*.cvg
+runs/**/*.12d
+runs/**/*.ccx.log
+runs/**/spooles.out
+runs/**/*.odb
+runs/**/*.msg
+runs/**/*.prt
+runs/**/*.com
+runs/**/*.sim
+runs/**/*.log
+runs/**/*.lck
+__pycache__/
+*.frd
+*.sta
+*.cvg
+*.12d
+*.odb
+*.msg
+*.prt
+*.com
+*.sim
+*.lck
+.venv/

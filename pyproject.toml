@@ -1,0 +1,25 @@
+[project]
+name = "fea-portfolio"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Wenqiang Fang", email = "12274016+wqfang@users.noreply.github.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "ccx2paraview>=3.2.0",
+    "gmsh>=4.15.2",
+    "matplotlib>=3.11.2",
+    "meshio>=5.3.5",
+    "numpy>=2.5.4",
+    "pandas>=3.1.1",
+    "scipy>=1.18.1",
+]
+
+[project.scripts]
+fea-portfolio = "fea_portfolio:main"
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
