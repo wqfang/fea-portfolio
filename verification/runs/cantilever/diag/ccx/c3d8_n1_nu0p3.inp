@@ -1,5 +1,5 @@
 *HEADING
-Cantilever benchmark, C3D8, level 1, 84 nodes
+C3D8 formulation check, c3d8_n1_nu0p3
 *NODE, NSET=NALL
 1, 0, 0, 0
 2, 10, 0, 0
@@ -112,7 +112,7 @@ Cantilever benchmark, C3D8, level 1, 84 nodes
 21, 42, 63, 84
 *MATERIAL, NAME=MAT
 *ELASTIC
-200000, 0.0
+200000, 0.3
 *SOLID SECTION, ELSET=EALL, MATERIAL=MAT
 *STEP
 *STATIC
