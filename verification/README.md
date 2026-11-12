@@ -59,7 +59,8 @@ the loaded face.
   d_exact and the observed convergence order p (1.56 here). This separates mesh
   error from modelling error: the converged 3D value sits 0.34% below Timoshenko
   because the fully clamped 3D root also blocks Poisson contraction, which beam
-  theory ignores.
+  theory ignores. The observed order is well below the h^4 expected for quadratic
+  elements; see *Why the convergence order is 1.6* below.
 
 ### Abaqus cross-check (Learning Edition, 1,000-node cap)
 
@@ -157,3 +158,56 @@ full integration gives zero. Its Abaqus deck and `run_diag.bat` are in
 solvers on elements with a common definition (C3D20, C3D20R, approximately
 C3D8I), and check the theory manual before treating a "C3D8" result from one
 code as a reference for another.
+
+### Why the convergence order is 1.6 (`root_singularity_check.py`)
+
+For quadratic elements on a smooth problem, the load-weighted deflection (the
+compliance, an energy quantity, which converges at twice the energy-norm rate)
+should converge as h^4. The benchmark gives 1.96 and then 1.56. Two features of
+the benchmark make the exact solution singular, and this script removes them one
+at a time (C3D20, CalculiX, n = 1, 2, 4, 8):
+
+```bash
+uv run root_singularity_check.py      # ~1 minute; writes runs/cantilever/root_check_results.csv
+```
+
+| Variant | Root | End loads | Order (n=1,2,4) | Order (n=2,4,8) |
+|---|---|---|---|---|
+| A: benchmark | fully clamped | uniform tip shear | 1.96 | 1.56 |
+| B | fully clamped | parabolic tip shear (zero at top and bottom faces) | 1.96 | 1.56 |
+| C: smooth | fixed in x only, free to contract | parabolic shear at both ends, balanced | 3.88 | 3.78 |
+
+- **The clamped root limits the convergence order.** Blocking the Poisson
+  contraction at the root makes stresses singular along the root edges, and
+  polynomial elements of any order converge slowly near a singularity under
+  uniform refinement. Remove it (C) and the order rises to about 4, as theory
+  predicts.
+- **The uniform tip traction makes no measurable difference.** Its jump against
+  the traction-free top and bottom faces is also a singularity, but making the
+  traction parabolic (B) leaves the orders unchanged.
+- **Without the clamp, the 3D model agrees with beam theory.** Variant C
+  converges to 1.603099 mm, within 0.003% of Timoshenko (1.603060 mm). The 0.34%
+  gap in the benchmark is therefore entirely the clamped root, not mesh error or
+  the theory.
+- **Practical consequence.** Because the order drifts, Richardson extrapolation
+  of the benchmark is only approximate. The spread between the extrapolations
+  from meshes (1, 2, 4) and (2, 4, 8), 1.59732 vs 1.59764 mm (0.02%), is a fair
+  error bar.
+
+In variant C the loads balance exactly, so the three point supports that stop
+rigid-body motion carry no load and add no singularity of their own.
+
+### C3D8R hourglass control in Abaqus (`c3d8r_hourglass_check.py`, pending)
+
+With one element through the depth, a C3D8R beam bends only through its
+artificial hourglass stiffness (92x too flexible with the Abaqus default). This
+script writes the C3D8R decks for n = 1 and 2 in four variants: default,
+`HOURGLASS=STIFFNESS` scaled 1x and 10x, and `HOURGLASS=ENHANCED`. CalculiX 2.23
+ignores `*SECTION CONTROLS` (it warns and gives the same answer), so the study
+is Abaqus-only.
+
+1. Run `uv run c3d8r_hourglass_check.py` to write the decks and `run_hg.bat` to
+   `runs/cantilever/hourglass/abaqus/`.
+2. Run `run_hg.bat` on the Windows VM and copy the `.dat` files back.
+3. Run the script again to tabulate the results in
+   `runs/cantilever/hourglass_results.csv`.
