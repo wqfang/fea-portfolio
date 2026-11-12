@@ -84,7 +84,7 @@ cases under its 1,000-node cap.
 | C3D8 | ccx | 0.646 | 0.875 | 0.962 | 0.988 |
 | C3D8 | Abaqus | 1.207 | 0.980 | | |
 | C3D8R | ccx | 2.77 | 1.175 | 1.035 | 1.006 |
-| C3D8R | Abaqus | 91.7 | 1.325 | | |
+| C3D8R | Abaqus (default hourglass) | 91.7 | 1.325 | | |
 | C3D8I | ccx | 0.9936 | 0.9937 | 0.9953 | 0.9961 |
 | C3D8I | Abaqus | 0.9948 | 0.9939 | | |
 | C3D20 | ccx | 0.9901 | 0.9948 | 0.9960 | 0.9964 |
@@ -197,17 +197,45 @@ uv run root_singularity_check.py      # ~1 minute; writes runs/cantilever/root_c
 In variant C the loads balance exactly, so the three point supports that stop
 rigid-body motion carry no load and add no singularity of their own.
 
-### C3D8R hourglass control in Abaqus (`c3d8r_hourglass_check.py`, pending)
+### C3D8R hourglass control in Abaqus (`c3d8r_hourglass_check.py`)
 
-With one element through the depth, a C3D8R beam bends only through its
-artificial hourglass stiffness (92x too flexible with the Abaqus default). This
-script writes the C3D8R decks for n = 1 and 2 in four variants: default,
-`HOURGLASS=STIFFNESS` scaled 1x and 10x, and `HOURGLASS=ENHANCED`. CalculiX 2.23
-ignores `*SECTION CONTROLS` (it warns and gives the same answer), so the study
-is Abaqus-only.
+With one element through the depth, bending of a reduced-integration brick is
+exactly an hourglass mode, so its only bending stiffness is the artificial
+hourglass stiffness. The script writes the C3D8R decks for n = 1 and 2 (the
+meshes under the Learning Edition cap) in four hourglass-control variants.
+CalculiX 2.23 ignores `*SECTION CONTROLS` (it warns and gives the same answer),
+so the study is Abaqus-only.
 
-1. Run `uv run c3d8r_hourglass_check.py` to write the decks and `run_hg.bat` to
-   `runs/cantilever/hourglass/abaqus/`.
-2. Run `run_hg.bat` on the Windows VM and copy the `.dat` files back.
-3. Run the script again to tabulate the results in
-   `runs/cantilever/hourglass_results.csv`.
+```bash
+uv run c3d8r_hourglass_check.py   # writes decks + run_hg.bat; tabulates any .dat present
+```
+
+| Variant | n=1 (mm) | x converged | n=2 (mm) | x converged |
+|---|---|---|---|---|
+| Default (no `*SECTION CONTROLS`) | 146.99 | 92.0 | 2.1238 | 1.329 |
+| `HOURGLASS=STIFFNESS`, scale 1 | 146.99 | 92.0 | 2.1238 | 1.329 |
+| `HOURGLASS=STIFFNESS`, scale 10 | 14.701 | 9.20 | 2.0487 | 1.282 |
+| `HOURGLASS=ENHANCED` | 1.5972 | 0.9997 | 1.5934 | 0.9974 |
+
+"x converged" is relative to the C3D20 Richardson value, 1.5976 mm. Results are
+in `runs/cantilever/hourglass_results.csv`.
+
+- **The Abaqus/Standard default for this model is the stiffness method.** The
+  default and `STIFFNESS` scale 1 are identical to every digit.
+- **At n=1 the deflection is set entirely by an artificial parameter.**
+  Scaling the hourglass stiffness by 10 cuts the deflection by exactly 10
+  (146.99 to 14.70 mm). The result tells you about the hourglass setting, not
+  about the beam.
+- **At n=2 real bending stiffness takes over.** The 10x scale changes the result
+  by only 3.5%, but the element is still 28-33% too flexible.
+- **Enhanced hourglass control fixes coarse-mesh bending.** It is within 0.03% of
+  the converged value with one element through the depth. That makes it as
+  accurate as C3D8I here, because enhanced hourglass control is based on an
+  assumed-strain formulation that captures linear bending.
+- **Practical rule.** With C3D8R in bending, use enhanced hourglass control or at
+  least four elements through the depth, and check the artificial strain energy
+  (ALLAE) against the internal energy (ALLIE) in the `.odb`.
+
+Abaqus prints one warning per deck with `*SECTION CONTROLS`: a generic notice
+listing the element types the setting applies to. C3D8R is on the list, and the
+message says it can then be ignored.
