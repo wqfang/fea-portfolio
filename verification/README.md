@@ -94,7 +94,12 @@ cases under its 1,000-node cap.
 
 **Element behaviour**
 - **C3D8 in CalculiX** (full 2x2x2 integration) shear-locks in bending: 65% of
-  the answer with one element through the depth, still 1.2% low at eight.
+  the answer with one element through the depth, still 1% low at eight
+  (13,000 nodes), converging at about order 2. Refinement mitigates locking
+  only if the elements stay short relative to their depth; adding layers
+  through the depth alone barely helps (see *C3D8 locking: element shape vs
+  layers* below). It does not cure volumetric locking in nearly incompressible
+  materials either.
 - **C3D8R** with one element through the depth hourglasses: bending is then
   exactly an hourglass mode, so the only bending stiffness is the solver's
   artificial hourglass control. CalculiX gives 2.8x, Abaqus 92x. Two elements
@@ -196,6 +201,48 @@ uv run root_singularity_check.py      # ~1 minute; writes runs/cantilever/root_c
 
 In variant C the loads balance exactly, so the three point supports that stop
 rigid-body motion carry no load and add no singularity of their own.
+
+### C3D8 locking: element shape vs layers (`element_aspect_check.py`)
+
+In the main sweep, refining C3D8 adds layers through the depth *and* shortens
+the elements along the beam, so the elements stay cubes. This study separates
+the two (CalculiX, C3D8, tip deflection relative to the converged value):
+
+```bash
+uv run element_aspect_check.py   # a few seconds; writes runs/cantilever/aspect_check_results.csv
+```
+
+| Series | Mesh at level n | Element length / depth | n=1 | n=2 | n=4 | n=8 | n=16 |
+|---|---|---|---|---|---|---|---|
+| S1 cubes (main sweep) | 20n x n x n | 1 | 0.649 | 0.878 | 0.966 | 0.991 | |
+| S2 layers only | 20 x n x n | n | 0.649 | 0.699 | 0.713 | 0.716 | |
+| S3 length only | 20n x 1 x 1 | 1/n | 0.649 | 0.799 | 0.849 | 0.862 | 0.866 |
+| S4 length only, nu = 0 | 20n x 1 x 1 | 1/n | 0.667 | 0.889 | 0.970 | 0.992 | 0.998 |
+
+S4 is compared with Timoshenko at nu = 0 (1.6024 mm). With no Poisson effect
+the clamped root blocks nothing, so the 3D answer and beam theory coincide.
+
+- **Adding layers alone does not cure shear locking.** With the element length
+  fixed at 10 mm, eight layers (1,700 nodes) improve the answer only from 0.65
+  to 0.72, and it stalls there. Each layer is thinner, so the elements become
+  more elongated (length/depth = n), and parasitic shear in a full-integration
+  brick grows with that ratio.
+- **Shear locking is controlled by element length relative to depth.** Making
+  the elements shorter (S3, S4) removes it, even with a single element through
+  the depth. At nu = 0, one layer of short elements converges to 0.998 of the
+  exact answer.
+- **With one layer, Poisson locking remains.** At nu = 0.3, S3 stalls at 0.87. A
+  single element through the depth gives a transverse strain that is constant
+  through the depth, but in bending the Poisson strain must vary linearly from
+  tension to compression side. The element cannot deform that way, so it is
+  too stiff. S4 confirms it: with nu = 0 the stall disappears.
+- **So the cube sweep converges because it fixes both at once.** Short elements
+  remove shear locking, and several layers let the Poisson strain vary through
+  the depth. Either one alone stalls.
+- **Practical rule.** For full-integration C3D8 in bending, keep element length
+  close to element depth, and use several elements through the depth. Better
+  still, use C3D8I or C3D20, which reach under 1% error with one element through
+  the depth.
 
 ### C3D8R hourglass control in Abaqus (`c3d8r_hourglass_check.py`)
 
