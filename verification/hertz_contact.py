@@ -175,7 +175,8 @@ def write_deck(path: Path, case: dict, etype: str, solver: str, k_pen: float = K
           "*BOUNDARY", "NAXIS, 1, 1, 0.", "NBOT, 2, 2, 0.",
           "*STEP", "*STATIC", "0.25, 1.",
           "*BOUNDARY", f"NTOP, 2, 2, {-DELTA:.10g}",
-          "*NODE PRINT, NSET=NTOP, TOTALS=ONLY", "RF"]
+          # ccx accepts TOTALS=ONLY; Abaqus allows only YES/NO (SUMMARY=NO drops the max/min table)
+          "*NODE PRINT, NSET=NTOP, " + ("TOTALS=ONLY" if solver == "ccx" else "TOTALS=YES, SUMMARY=NO"), "RF"]
     if solver == "ccx":
         o += ["*NODE FILE", "U, S", "*CONTACT FILE", "CDIS, CSTR"]
     elif solver == "abaqus":
