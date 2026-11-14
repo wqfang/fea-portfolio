@@ -24,3 +24,6 @@ __pycache__/
 *.sim
 *.lck
 .venv/
+
+# ParaView files converted from .frd (regenerate with frd2vtu.py)
+runs/**/*.vtu

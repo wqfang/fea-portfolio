@@ -1,6 +1,6 @@
 """Shared helpers for the FEA verification suite.
 
-Structured hexahedral meshes, Abaqus-format input decks that both CalculiX (ccx)
+Structured hexahedral meshes, 2D decks, Abaqus-format input decks that both CalculiX (ccx)
 and Abaqus accept, solver launching, and .dat parsing for both solvers.
 Units are consistent: mm, N, MPa.
 """
@@ -22,6 +22,15 @@ ELEMENT_ORDER = {
     "C3D8I": 1,  # incompatible modes: fixes bending locking
     "C3D20": 2,  # quadratic, full integration
     "C3D20R": 2, # quadratic, reduced integration
+}
+
+# 2D plane-stress families (Benchmark 2). CPS4I is Abaqus-only: ccx 2.23 rejects it.
+ELEMENT_ORDER_2D = {
+    "CPS4": 1,   # full integration
+    "CPS4R": 1,  # reduced integration, hourglass-controlled
+    "CPS4I": 1,  # incompatible modes
+    "CPS8": 2,   # quadratic serendipity, full integration
+    "CPS8R": 2,  # quadratic serendipity, reduced integration
 }
 
 
@@ -200,3 +209,71 @@ def run_ccx(deck: Path, ccx: str = "ccx", threads: int | None = None) -> Path:
     if res.returncode != 0 or "*ERROR" in res.stdout or not dat.exists():
         raise RuntimeError(f"ccx failed on {deck.name}; see {job.name}.ccx.log")
     return dat
+
+
+def write_deck_2d(path: Path, nodes: dict[int, tuple[float, float]], elements: list[list[int]],
+                  etype: str, E: float, nu: float, thickness: float,
+                  bcs: dict[str, tuple[list[int], int]], cloads: list[tuple[int, int, float]],
+                  heading: str, solver: str) -> None:
+    """Write a 2D linear-static deck (plane stress/strain elements).
+
+    bcs maps a node-set name to (node ids, constrained DOF). Stress output is
+    solver-specific: ccx writes averaged nodal stresses to the .frd file (it does
+    not print nodal stresses to the .dat); Abaqus prints them to the .dat with
+    *EL PRINT, POSITION=AVERAGED AT NODES.
+    """
+    out = [f"*HEADING\n{heading}", "*NODE, NSET=NALL"]
+    out += [f"{n}, {x:.12g}, {y:.12g}" for n, (x, y) in nodes.items()]
+    out.append(f"*ELEMENT, TYPE={etype}, ELSET=EALL")
+    out += [", ".join(map(str, [e, *conn])) for e, conn in enumerate(elements, start=1)]
+    for name, (ids, _) in bcs.items():
+        out += [f"*NSET, NSET={name}", _id_lines(ids)]
+    out += ["*MATERIAL, NAME=MAT", "*ELASTIC", f"{E:.10g}, {nu:.10g}",
+            "*SOLID SECTION, ELSET=EALL, MATERIAL=MAT", f"{thickness:.10g},",
+            "*STEP", "*STATIC", "*BOUNDARY"]
+    out += [f"{name}, {dof}, {dof}, 0." for name, (_, dof) in bcs.items()]
+    out.append("*CLOAD")
+    out += [f"{n}, {dof}, {f:.12g}" for n, dof, f in cloads]
+    if solver == "ccx":
+        out += ["*NODE FILE", "U, S"]
+    elif solver == "abaqus":
+        out += ["*EL PRINT, ELSET=EALL, POSITION=AVERAGED AT NODES, SUMMARY=NO", "S11, S22, S12"]
+    else:
+        raise ValueError(solver)
+    out += ["*END STEP", ""]
+    path.write_text("\n".join(out))
+
+
+def parse_frd_nodal_stress(frd_path: Path) -> dict[int, np.ndarray]:
+    """Averaged nodal stresses (sxx, syy, szz, sxy, syz, szx) from a ccx ASCII .frd file.
+
+    Takes the last STRESS block. Fields are fixed width (12 characters) and can
+    run together, so they are sliced rather than split.
+    """
+    lines = Path(frd_path).read_text(errors="replace").splitlines()
+    starts = [i for i, ln in enumerate(lines) if ln.startswith(" -4  STRESS")]
+    if not starts:
+        raise ValueError(f"no STRESS block in {frd_path}")
+    stress = {}
+    for ln in lines[starts[-1] + 1:]:
+        if ln.startswith(" -3"):
+            break
+        if ln.startswith(" -1"):
+            stress[int(ln[3:13])] = np.array([float(ln[13 + 12 * k:25 + 12 * k]) for k in range(6)])
+    return stress
+
+
+def parse_dat_nodal_stress_2d(dat_path: Path) -> dict[int, np.ndarray]:
+    """Averaged nodal (S11, S22, S12) printed by Abaqus *EL PRINT, POSITION=AVERAGED AT NODES."""
+    text = Path(dat_path).read_text(errors="replace")
+    marker = "E L E M E N T   O U T P U T"
+    if marker in text:
+        text = text[text.rindex(marker):]
+    stress = {}
+    for line in text.splitlines():
+        m = _ROW.match(line)
+        if m:
+            stress[int(m.group(1))] = np.array([float(v.replace("D", "E")) for v in m.groups()[1:]])
+    if not stress:
+        raise ValueError(f"no nodal stress table found in {dat_path}")
+    return stress

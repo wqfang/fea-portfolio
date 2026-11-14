@@ -8,7 +8,7 @@ studies. Units: mm, N, MPa.
 |---|-----------|--------|--------|
 | 0 | Single-element uniaxial tension (`tension.inp`) | Material and boundary-condition setup; ccx vs Abaqus | Done: both match closed form |
 | 1 | End-loaded cantilever (`cantilever.py`) | Bending, shear locking, hourglassing, convergence rate | Done: CalculiX and Abaqus |
-| 2 | Plate with a hole | Stress concentration factor Kt | Planned |
+| 2 | Plate with a hole (`plate_hole.py`) | Stress concentration factor Kt, stress convergence | CalculiX done; Abaqus pending |
 | 3 | Hertz sphere-on-flat contact | Contact pressure and radius | Planned |
 | 4 | NAFEMS LE1 elliptic membrane | Standard benchmark from NAFEMS (National Agency for Finite Element Methods and Standards) | Planned |
 
@@ -286,3 +286,125 @@ in `runs/cantilever/hourglass_results.csv`.
 Abaqus prints one warning per deck with `*SECTION CONTROLS`: a generic notice
 listing the element types the setting applies to. C3D8R is on the list, and the
 message says it can then be ignored.
+
+## Benchmark 2: plate with a hole
+
+Plane stress, quarter model with symmetry, remote tension S = 100 MPa along x.
+Hole radius a = 10 mm (d = 20), half-width 50 mm (W = 100, d/W = 0.2). The mesh
+is a structured O-grid round the hole, graded towards it; each level halves
+every element size. Element types: CPS4, CPS4R, CPS8, CPS8R in both solvers,
+and CPS4I in Abaqus only (CalculiX 2.23 rejects it). Levels 1, 2, 4, 8.
+
+```bash
+uv run plate_hole.py                     # CalculiX sweep + plot, ~10 s
+uv run plate_hole.py --collect-abaqus    # after running the Abaqus decks
+uv run plate_hole.py --levels 1 2 4      # quicker
+```
+
+Outputs go to `runs/plate_hole/`: `results.csv`, `plate_hole_convergence.png`,
+and the decks. The peak stress is the averaged nodal sigma_xx at the top of
+the hole (0, a), as a postprocessor would report it.
+
+**Two problems.**
+- **Kirsch (exact).** A 100 x 100 mm square round the hole, loaded on its outer
+  edges with the exact infinite-plate (Kirsch) stresses as consistent nodal
+  forces. The FE model then has a known exact answer everywhere: peak stress
+  3S = 300 MPa, and hoop stress S(1 - 2 cos 2 theta) round the hole edge. This
+  is a true convergence test with no reference uncertainty.
+- **Finite plate (practical).** A 100 x 300 mm plate with uniform tension on
+  the ends, compared with Peterson's handbook curve fit, Kt_net = 3.00 - 3.13q
+  + 3.66q^2 - 1.53q^3 with q = d/W (2.508 at q = 0.2), and with a
+  Richardson-extrapolated FE value from the three finest CPS8 meshes.
+
+**Section thickness 0.01 mm: why so thin.** CalculiX does not solve 2D elements
+directly. It expands each plane-stress element into a 3D brick of the section
+thickness, so it really solves a thin 3D plate. Near a hole a real plate is not
+in exact plane stress: sigma_zz is non-zero inside (2.2 MPa at the hole with a
+1 mm section) and the mid-plane peak rises with thickness relative to the hole
+radius. A 0.01 mm section recovers plane stress; Abaqus solves true plane
+stress, where the thickness only scales the loads, so the same section is used
+for both. See `plate_hole_sensitivity.py` below.
+
+## Findings, Benchmark 2 (CalculiX 2.23)
+
+<!-- Update after the Abaqus runs -->
+
+**Kirsch problem**: peak stress error vs the exact 300 MPa.
+
+| Element | n=1 | n=2 | n=4 | n=8 |
+|---|---|---|---|---|
+| CPS4 | -1.7% | +0.96% | +0.86% | +0.51% |
+| CPS4R | -65% | -61% | -44% | -20% |
+| CPS8 | -0.65% | -0.21% | -0.056% | -0.013% |
+| CPS8R | +1.7% | +0.48% | +0.12% | +0.028% |
+
+- **CPS8 converges cleanly to the exact answer**: the peak error falls about 4x
+  per halving of the element size (order about 2), down to 0.013% at n=8, and
+  the RMS hoop-stress error round the hole falls from 1.6 to 0.02 MPa. This
+  verifies the mesh, the edge loads and the stress extraction.
+- **CPS8R converges from above** at the same rate, slightly less accurate than
+  CPS8.
+- **CPS4 overshoots by about 0.5-1% and converges slowly.** Nodal stresses of
+  linear elements are extrapolated from a stress that is constant or linear
+  within each element, and the straight-sided elements only approximate the
+  curved hole.
+- **CPS4R in CalculiX is unusable with a thin section** (20% low at n=8). This
+  is a CalculiX artefact, not a property of CPS4R: see below.
+
+**Finite plate**: Kt_net = sigma_peak (1 - d/W) / S.
+
+| Element | n=1 | n=2 | n=4 | n=8 |
+|---|---|---|---|---|
+| CPS4 | 2.457 | 2.538 | 2.541 | 2.534 |
+| CPS8 | 2.502 | 2.516 | 2.521 | 2.522 |
+| CPS8R | 2.565 | 2.534 | 2.525 | 2.523 |
+
+- **Converged FE value: Kt_net = 2.522** (Kt_gross = 3.153), from Richardson
+  extrapolation of the three finest CPS8 meshes (observed order 1.96). CPS8 and
+  CPS8R bracket it from below and above.
+- **0.55% above Peterson's curve fit (2.508).** The same mesh and method
+  reproduce the exact Kirsch solution to 0.013%, and the plate is long enough
+  (below), so the gap most likely reflects how closely the handbook curve fit
+  matches the exact solution rather than an FE error.
+
+### Modelling checks (`plate_hole_sensitivity.py`)
+
+```bash
+uv run plate_hole_sensitivity.py   # ~1 minute; writes runs/plate_hole/sensitivity_results.csv
+```
+
+**Section thickness in CalculiX** (Kirsch problem, peak stress at n=8; exact 300 MPa):
+
+| Element | T = 0.01 mm | 0.1 mm | 1 mm | 5 mm |
+|---|---|---|---|---|
+| CPS8 | 299.96 | 300.01 | 300.59 | 302.56 |
+| CPS4 | 301.54 | 301.59 | 302.68 | 304.88 |
+| CPS4R | 240.29 | 293.17 | 294.42 | 295.99 |
+
+- **CPS8 and CPS4 drift upwards with thickness**: this is the real 3D effect
+  of the expanded brick (sigma_zz at the hole rises from 0.001 to 10.6 MPa for
+  CPS8). For plane-stress verification the section must be thin compared with
+  the hole radius.
+- **CPS4R fails in the opposite direction when thin.** CalculiX expands it into
+  a single reduced-integration brick through the thickness, and its hourglass
+  control breaks down when the brick is far thinner than it is wide. At T = 1
+  mm it behaves like a normal reduced-integration element (about 2% low at n=8,
+  from sampling stress at the element centre); at 0.01 mm it is 20% low. Use
+  CPS8/CPS8R, or a sensible section thickness, for 2D work in CalculiX.
+
+**Plate length** (finite plate, CPS8 n=4): Kt_net = 2.5233 at L/W = 2,
+2.5206 at L/W = 3, 2.5206 at L/W = 6 and 2.5205 at L/W = 12. At L/W = 3, the
+length used in the benchmark, the ends are far enough from the hole (0.005% from
+the long-plate value).
+
+### Abaqus cross-check (Learning Edition, 1,000-node cap)
+
+Every case under 1,000 nodes is written to `runs/plate_hole/abaqus/` with
+`run_all.bat` (26 decks, including CPS4I). Abaqus prints averaged nodal stresses
+to the `.dat` with `*EL PRINT, POSITION=AVERAGED AT NODES`.
+
+1. Copy `runs/plate_hole/abaqus/` to the Windows VM.
+2. Run `run_all.bat` in an Abaqus Command window in that folder.
+3. Copy the `.dat` files back into `runs/plate_hole/abaqus/`.
+4. Run `uv run plate_hole.py --collect-abaqus`.
+
