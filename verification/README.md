@@ -385,12 +385,48 @@ uv run plate_hole_sensitivity.py   # ~1 minute; writes runs/plate_hole/sensitivi
   of the expanded brick (sigma_zz at the hole rises from 0.001 to 10.6 MPa for
   CPS8). For plane-stress verification the section must be thin compared with
   the hole radius.
-- **CPS4R fails in the opposite direction when thin.** CalculiX expands it into
-  a single reduced-integration brick through the thickness, and its hourglass
-  control breaks down when the brick is far thinner than it is wide. At T = 1
-  mm it behaves like a normal reduced-integration element (about 2% low at n=8,
-  from sampling stress at the element centre); at 0.01 mm it is 20% low. Use
-  CPS8/CPS8R, or a sensible section thickness, for 2D work in CalculiX.
+- **CPS4R fails in the opposite direction when thin.** At T = 1 mm it behaves
+  like a normal reduced-integration element: about 2% low at n=8, because it
+  samples stress only at the element centre. At 0.01 mm it is 20% low at n=8
+  and 44% low at n=4.
+
+**Why the thin CPS4R fails: it is far too stiff.** The hole-edge displacements
+show it. The exact Kirsch values in plane stress are ux(a, 0) = 3Sa/E = 0.0150 mm
+and uy(0, a) = -Sa/E = -0.0050 mm; a model that is too stiff moves less under
+the same load. FE displacement / exact:
+
+| Case | n=2 ux | n=2 uy | n=4 ux | n=4 uy | n=8 ux | n=8 uy |
+|---|---|---|---|---|---|---|
+| CPS8, T = 0.01 | 1.0000 | 0.9999 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| CPS4, T = 0.01 | 0.988 | 0.982 | 0.997 | 0.996 | 0.999 | 0.999 |
+| CPS4R, T = 0.01 | **0.368** | **0.291** | **0.502** | **0.312** | **0.765** | **0.544** |
+| CPS4R, T = 0.1 | 0.661 | 0.411 | 0.927 | 0.843 | 0.995 | 0.989 |
+| CPS4R, T = 1 | 0.984 | 0.965 | 0.999 | 0.996 | 1.000 | 0.999 |
+
+- **CPS8 reproduces the exact displacements to 4 digits**, an independent check
+  of the edge loads, boundary conditions and section thickness.
+- **CPS4 is slightly too stiff** (1-2% at n=2), as expected of a fully
+  integrated linear element, and converges to the exact values.
+- **At T = 0.01 mm, CPS4R moves only a third to a half as far as it should**:
+  the model is two to three times too stiff near the hole. The material round
+  the hole then resists the deformation that produces the stress
+  concentration, so the whole stress field is wrong (RMS hoop-stress error 78
+  MPa at n=4), not just the peak.
+- **The stiffening depends on the element's shape, not the mesh as such.**
+  CalculiX expands CPS4R into a single reduced-integration brick (C3D8R) through
+  the thickness. A one-point brick needs hourglass control, artificial
+  stiffness that suppresses its zero-energy modes. Round the hole the elements
+  are about 0.5-2 mm wide, so a 0.01 mm brick is 50-200 times wider than it is
+  deep, and the hourglass stiffness swamps the real stiffness. A thicker
+  section (T = 0.1 mm) or a finer mesh (n=8) brings the shape ratio down and the
+  error falls with it; at T = 1 mm CPS4R matches CPS4. Hourglass control is the
+  only extra stiffness a C3D8R has, so it is the likely cause; how CalculiX
+  scales it has not been checked in the source code.
+- **Abaqus solves CPS4R in true 2D and does not have this problem**: 4.0% low
+  at n=4, the same as CalculiX at T = 1 mm (287.9 vs 287.8 MPa).
+- **Use CPS8/CPS8R for 2D work in CalculiX.** No single section thickness suits
+  every element: CPS4R needs a thick section, while CPS8 and CPS4 need a thin
+  one to stay in plane stress.
 
 **Plate length** (finite plate, CPS8 n=4): Kt_net = 2.5233 at L/W = 2,
 2.5206 at L/W = 3, 2.5206 at L/W = 6 and 2.5205 at L/W = 12. At L/W = 3, the
@@ -432,15 +468,16 @@ RMS hoop-stress error round the hole (MPa), Abaqus (CalculiX in brackets):
 | CPS8 | 1.39 (1.65) | 0.39 (0.42) | |
 | CPS8R | 2.43 (2.43) | 0.62 (0.62) | |
 
-**Finite plate**: Kt_net, Abaqus (converged FE value 2.522; Peterson 2.508).
+**Finite plate**: Kt_net, Abaqus (CalculiX in brackets). Converged FE value
+2.522; Peterson 2.508.
 
 | Element | n=1 | n=2 | n=4 |
 |---|---|---|---|
-| CPS4 | 2.446 | 2.526 | 2.534 |
-| CPS4R | 2.040 | 2.299 | 2.418 |
-| CPS4I | 2.410 | 2.504 | 2.523 |
-| CPS8 | 2.506 | 2.517 | |
-| CPS8R | 2.566 | 2.534 | |
+| CPS4 | 2.446 (2.457) | 2.526 (2.538) | 2.534 (2.541) |
+| CPS4R | 2.040 (0.823) | 2.299 (0.932) | 2.418 (1.382) |
+| CPS4I | 2.410 (n/a) | 2.504 (n/a) | 2.523 (n/a) |
+| CPS8 | 2.506 (2.502) | 2.517 (2.516) | |
+| CPS8R | 2.566 (2.565) | 2.534 (2.534) | |
 
 - **The quadratic elements agree between the two codes.** CPS8R matches
   CalculiX to the 4 printed digits (305.1 vs 305.13 MPa at n=1). CPS8 agrees
