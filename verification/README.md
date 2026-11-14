@@ -32,7 +32,29 @@ SPOOLES solver intermittently returned wrong answers with no error (the same dec
 gave 0.06 mm on one 8-thread run and 1.403 mm on others), and these models are
 too small to benefit from threads.
 
+## Contents
+
+- [Benchmark 1: cantilever beam](#benchmark-1-cantilever-beam)
+  - [Model and references](#model-and-references)
+  - [Running the Abaqus cross-check](#running-the-abaqus-cross-check)
+  - [Results](#results)
+  - [Investigations](#investigations)
+    - [Why Abaqus and CalculiX disagree on C3D8 (`c3d8_formulation_check.py`)](#why-abaqus-and-calculix-disagree-on-c3d8-c3d8_formulation_checkpy)
+    - [Why the convergence order is 1.6 (`root_singularity_check.py`)](#why-the-convergence-order-is-16-root_singularity_checkpy)
+    - [C3D8 locking: element shape vs layers (`element_aspect_check.py`)](#c3d8-locking-element-shape-vs-layers-element_aspect_checkpy)
+    - [C3D8R hourglass control in Abaqus (`c3d8r_hourglass_check.py`)](#c3d8r-hourglass-control-in-abaqus-c3d8r_hourglass_checkpy)
+- [Benchmark 2: plate with a hole](#benchmark-2-plate-with-a-hole)
+  - [Model and references](#model-and-references-1)
+  - [Running the Abaqus cross-check](#running-the-abaqus-cross-check-1)
+  - [Results: CalculiX 2.23](#results-calculix-223)
+  - [Results: Abaqus cross-check (Learning Edition 2026)](#results-abaqus-cross-check-learning-edition-2026)
+  - [Modelling checks (`plate_hole_sensitivity.py`)](#modelling-checks-plate_hole_sensitivitypy)
+    - [Section thickness in CalculiX](#section-thickness-in-calculix)
+    - [Plate length](#plate-length)
+
 ## Benchmark 1: cantilever beam
+
+### Model and references
 
 Steel beam, 200 x 10 x 10 mm, clamped at x = 0, uniform shear traction totalling
 P = 100 N on the free end. Five element types (C3D8, C3D8R, C3D8I, C3D20, C3D20R)
@@ -60,9 +82,11 @@ the loaded face.
   error from modelling error: the converged 3D value sits 0.34% below Timoshenko
   because the fully clamped 3D root also blocks Poisson contraction, which beam
   theory ignores. The observed order is well below the h^4 expected for quadratic
-  elements; see *Why the convergence order is 1.6* below.
+  elements; see [Why the convergence order is 1.6](#why-the-convergence-order-is-16-root_singularity_checkpy).
 
-### Abaqus cross-check (Learning Edition, 1,000-node cap)
+### Running the Abaqus cross-check
+
+Learning Edition, 1,000-node cap.
 
 Every case under 1,000 nodes is also written to `runs/cantilever/abaqus/` with
 `run_all.bat`.
@@ -74,7 +98,7 @@ Every case under 1,000 nodes is also written to `runs/cantilever/abaqus/` with
    on the plot and as `solver=abaqus` rows in `results.csv`. Without the flag the
    script ignores the Abaqus `.dat` files.
 
-## Findings (CalculiX 2.23, Abaqus Learning Edition 2026)
+### Results
 
 Tip deflection as a fraction of Timoshenko (1.6031 mm). Abaqus runs only the
 cases under its 1,000-node cap.
@@ -97,8 +121,8 @@ cases under its 1,000-node cap.
   the answer with one element through the depth, still 1% low at eight
   (13,000 nodes), converging at about order 2. Refinement mitigates locking
   only if the elements stay short relative to their depth; adding layers
-  through the depth alone barely helps (see *C3D8 locking: element shape vs
-  layers* below). It does not cure volumetric locking in nearly incompressible
+  through the depth alone barely helps (see [C3D8 locking: element shape vs
+  layers](#c3d8-locking-element-shape-vs-layers-element_aspect_checkpy)). It does not cure volumetric locking in nearly incompressible
   materials either.
 - **C3D8R** with one element through the depth hourglasses: bending is then
   exactly an hourglass mode, so the only bending stiffness is the solver's
@@ -122,7 +146,11 @@ cases under its 1,000-node cap.
   stiff. The run was clean (no warnings, linear, residual 6e-10), and the
   deformed shape matched CalculiX's up to a scale factor.
 
-### Why Abaqus and CalculiX disagree on C3D8 (`c3d8_formulation_check.py`)
+### Investigations
+
+Follow-up studies that explain the results above. Each has its own script.
+
+#### Why Abaqus and CalculiX disagree on C3D8 (`c3d8_formulation_check.py`)
 
 Abaqus/Standard's C3D8 uses *selectively reduced integration*: the volumetric
 strain at each integration point is replaced by the element average (the
@@ -164,7 +192,7 @@ solvers on elements with a common definition (C3D20, C3D20R, approximately
 C3D8I), and check the theory manual before treating a "C3D8" result from one
 code as a reference for another.
 
-### Why the convergence order is 1.6 (`root_singularity_check.py`)
+#### Why the convergence order is 1.6 (`root_singularity_check.py`)
 
 For quadratic elements on a smooth problem, the load-weighted deflection (the
 compliance, an energy quantity, which converges at twice the energy-norm rate)
@@ -202,7 +230,7 @@ uv run root_singularity_check.py      # ~1 minute; writes runs/cantilever/root_c
 In variant C the loads balance exactly, so the three point supports that stop
 rigid-body motion carry no load and add no singularity of their own.
 
-### C3D8 locking: element shape vs layers (`element_aspect_check.py`)
+#### C3D8 locking: element shape vs layers (`element_aspect_check.py`)
 
 In the main sweep, refining C3D8 adds layers through the depth *and* shortens
 the elements along the beam, so the elements stay cubes. This study separates
@@ -244,7 +272,7 @@ the clamped root blocks nothing, so the 3D answer and beam theory coincide.
   still, use C3D8I or C3D20, which reach under 1% error with one element through
   the depth.
 
-### C3D8R hourglass control in Abaqus (`c3d8r_hourglass_check.py`)
+#### C3D8R hourglass control in Abaqus (`c3d8r_hourglass_check.py`)
 
 With one element through the depth, bending of a reduced-integration brick is
 exactly an hourglass mode, so its only bending stiffness is the artificial
@@ -289,6 +317,8 @@ message says it can then be ignored.
 
 ## Benchmark 2: plate with a hole
 
+### Model and references
+
 Plane stress, quarter model with symmetry, remote tension S = 100 MPa along x.
 Hole radius a = 10 mm (d = 20), half-width 50 mm (W = 100, d/W = 0.2). The mesh
 is a structured O-grid round the hole, graded towards it; each level halves
@@ -323,9 +353,22 @@ in exact plane stress: sigma_zz is non-zero inside (2.2 MPa at the hole with a
 1 mm section) and the mid-plane peak rises with thickness relative to the hole
 radius. A 0.01 mm section recovers plane stress; Abaqus solves true plane
 stress, where the thickness only scales the loads, so the same section is used
-for both. See `plate_hole_sensitivity.py` below.
+for both. See [Modelling checks](#modelling-checks-plate_hole_sensitivitypy).
 
-## Findings, Benchmark 2 (CalculiX 2.23)
+### Running the Abaqus cross-check
+
+Learning Edition, 1,000-node cap.
+
+Every case under 1,000 nodes is written to `runs/plate_hole/abaqus/` with
+`run_all.bat` (26 decks, including CPS4I).
+
+1. Copy `runs/plate_hole/abaqus/` to the Windows VM.
+2. Run `run_all.bat` in an Abaqus Command window in that folder.
+3. Copy the `.dat` files back into `runs/plate_hole/abaqus/`.
+4. Run `uv run plate_hole.py --collect-abaqus`. Abaqus results appear as crosses
+   on `plate_hole_convergence.png` and as `solver=abaqus` rows in `results.csv`.
+
+### Results: CalculiX 2.23
 
 **Kirsch problem**: peak stress error vs the exact 300 MPa.
 
@@ -367,73 +410,7 @@ for both. See `plate_hole_sensitivity.py` below.
   (below), so the gap most likely reflects how closely the handbook curve fit
   matches the exact solution rather than an FE error.
 
-### Modelling checks (`plate_hole_sensitivity.py`)
-
-```bash
-uv run plate_hole_sensitivity.py   # ~1 minute; writes runs/plate_hole/sensitivity_results.csv
-```
-
-**Section thickness in CalculiX** (Kirsch problem, peak stress at n=8; exact 300 MPa):
-
-| Element | T = 0.01 mm | 0.1 mm | 1 mm | 5 mm |
-|---|---|---|---|---|
-| CPS8 | 299.96 | 300.01 | 300.59 | 302.56 |
-| CPS4 | 301.54 | 301.59 | 302.68 | 304.88 |
-| CPS4R | 240.29 | 293.17 | 294.42 | 295.99 |
-
-- **CPS8 and CPS4 drift upwards with thickness**: this is the real 3D effect
-  of the expanded brick (sigma_zz at the hole rises from 0.001 to 10.6 MPa for
-  CPS8). For plane-stress verification the section must be thin compared with
-  the hole radius.
-- **CPS4R fails in the opposite direction when thin.** At T = 1 mm it behaves
-  like a normal reduced-integration element: about 2% low at n=8, because it
-  samples stress only at the element centre. At 0.01 mm it is 20% low at n=8
-  and 44% low at n=4.
-
-**Why the thin CPS4R fails: it is far too stiff.** The hole-edge displacements
-show it. The exact Kirsch values in plane stress are ux(a, 0) = 3Sa/E = 0.0150 mm
-and uy(0, a) = -Sa/E = -0.0050 mm; a model that is too stiff moves less under
-the same load. FE displacement / exact:
-
-| Case | n=2 ux | n=2 uy | n=4 ux | n=4 uy | n=8 ux | n=8 uy |
-|---|---|---|---|---|---|---|
-| CPS8, T = 0.01 | 1.0000 | 0.9999 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
-| CPS4, T = 0.01 | 0.988 | 0.982 | 0.997 | 0.996 | 0.999 | 0.999 |
-| CPS4R, T = 0.01 | **0.368** | **0.291** | **0.502** | **0.312** | **0.765** | **0.544** |
-| CPS4R, T = 0.1 | 0.661 | 0.411 | 0.927 | 0.843 | 0.995 | 0.989 |
-| CPS4R, T = 1 | 0.984 | 0.965 | 0.999 | 0.996 | 1.000 | 0.999 |
-
-- **CPS8 reproduces the exact displacements to 4 digits**, an independent check
-  of the edge loads, boundary conditions and section thickness.
-- **CPS4 is slightly too stiff** (1-2% at n=2), as expected of a fully
-  integrated linear element, and converges to the exact values.
-- **At T = 0.01 mm, CPS4R moves only a third to a half as far as it should**:
-  the model is two to three times too stiff near the hole. The material round
-  the hole then resists the deformation that produces the stress
-  concentration, so the whole stress field is wrong (RMS hoop-stress error 78
-  MPa at n=4), not just the peak.
-- **The stiffening depends on the element's shape, not the mesh as such.**
-  CalculiX expands CPS4R into a single reduced-integration brick (C3D8R) through
-  the thickness. A one-point brick needs hourglass control, artificial
-  stiffness that suppresses its zero-energy modes. Round the hole the elements
-  are about 0.5-2 mm wide, so a 0.01 mm brick is 50-200 times wider than it is
-  deep, and the hourglass stiffness swamps the real stiffness. A thicker
-  section (T = 0.1 mm) or a finer mesh (n=8) brings the shape ratio down and the
-  error falls with it; at T = 1 mm CPS4R matches CPS4. Hourglass control is the
-  only extra stiffness a C3D8R has, so it is the likely cause; how CalculiX
-  scales it has not been checked in the source code.
-- **Abaqus solves CPS4R in true 2D and does not have this problem**: 4.0% low
-  at n=4, the same as CalculiX at T = 1 mm (287.9 vs 287.8 MPa).
-- **Use CPS8/CPS8R for 2D work in CalculiX.** No single section thickness suits
-  every element: CPS4R needs a thick section, while CPS8 and CPS4 need a thin
-  one to stay in plane stress.
-
-**Plate length** (finite plate, CPS8 n=4): Kt_net = 2.5233 at L/W = 2,
-2.5206 at L/W = 3, 2.5206 at L/W = 6 and 2.5205 at L/W = 12. At L/W = 3, the
-length used in the benchmark, the ends are far enough from the hole (0.005% from
-the long-plate value).
-
-## Findings, Benchmark 2: Abaqus cross-check (Learning Edition 2026)
+### Results: Abaqus cross-check (Learning Edition 2026)
 
 Every case under the 1,000-node cap was run in Abaqus: levels 1, 2 and 4 for
 the linear elements, and 1 and 2 for the quadratic ones (26 decks). All ran
@@ -441,11 +418,6 @@ without errors. The only warning is a generic note about section thickness in
 contact, which does not apply here. Abaqus prints the averaged nodal stresses
 (`*EL PRINT, POSITION=AVERAGED AT NODES`) to 4 significant figures, so its
 peak stresses are resolved to 0.1 MPa (0.03%).
-
-To rerun: copy `runs/plate_hole/abaqus/` to the Windows VM, run `run_all.bat`
-in an Abaqus Command window in that folder, copy the `.dat` files back, then
-run `uv run plate_hole.py --collect-abaqus`. The Abaqus points appear as
-crosses on `plate_hole_convergence.png`.
 
 **Kirsch problem**: peak stress error vs the exact 300 MPa, Abaqus (CalculiX in
 brackets).
@@ -508,3 +480,72 @@ RMS hoop-stress error round the hole (MPa), Abaqus (CalculiX in brackets):
 - **Practical ranking for peak stress at a notch:** CPS8 ≈ CPS8R > CPS4I >
   CPS4 >> CPS4R, in both codes. In CalculiX, avoid CPS4R for 2D work entirely.
 
+### Modelling checks (`plate_hole_sensitivity.py`)
+
+```bash
+uv run plate_hole_sensitivity.py   # ~1 minute; writes runs/plate_hole/sensitivity_results.csv
+```
+
+#### Section thickness in CalculiX
+
+Kirsch problem, peak stress at n=8; exact 300 MPa.
+
+| Element | T = 0.01 mm | 0.1 mm | 1 mm | 5 mm |
+|---|---|---|---|---|
+| CPS8 | 299.96 | 300.01 | 300.59 | 302.56 |
+| CPS4 | 301.54 | 301.59 | 302.68 | 304.88 |
+| CPS4R | 240.29 | 293.17 | 294.42 | 295.99 |
+
+- **CPS8 and CPS4 drift upwards with thickness**: this is the real 3D effect
+  of the expanded brick (sigma_zz at the hole rises from 0.001 to 10.6 MPa for
+  CPS8). For plane-stress verification the section must be thin compared with
+  the hole radius.
+- **CPS4R fails in the opposite direction when thin.** At T = 1 mm it behaves
+  like a normal reduced-integration element: about 2% low at n=8, because it
+  samples stress only at the element centre. At 0.01 mm it is 20% low at n=8
+  and 44% low at n=4.
+
+**Why the thin CPS4R fails: it is far too stiff.** The hole-edge displacements
+show it. The exact Kirsch values in plane stress are ux(a, 0) = 3Sa/E = 0.0150 mm
+and uy(0, a) = -Sa/E = -0.0050 mm; a model that is too stiff moves less under
+the same load. FE displacement / exact:
+
+| Case | n=2 ux | n=2 uy | n=4 ux | n=4 uy | n=8 ux | n=8 uy |
+|---|---|---|---|---|---|---|
+| CPS8, T = 0.01 | 1.0000 | 0.9999 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| CPS4, T = 0.01 | 0.988 | 0.982 | 0.997 | 0.996 | 0.999 | 0.999 |
+| CPS4R, T = 0.01 | **0.368** | **0.291** | **0.502** | **0.312** | **0.765** | **0.544** |
+| CPS4R, T = 0.1 | 0.661 | 0.411 | 0.927 | 0.843 | 0.995 | 0.989 |
+| CPS4R, T = 1 | 0.984 | 0.965 | 0.999 | 0.996 | 1.000 | 0.999 |
+
+- **CPS8 reproduces the exact displacements to 4 digits**, an independent check
+  of the edge loads, boundary conditions and section thickness.
+- **CPS4 is slightly too stiff** (1-2% at n=2), as expected of a fully
+  integrated linear element, and converges to the exact values.
+- **At T = 0.01 mm, CPS4R moves only a third to a half as far as it should**:
+  the model is two to three times too stiff near the hole. The material round
+  the hole then resists the deformation that produces the stress
+  concentration, so the whole stress field is wrong (RMS hoop-stress error 78
+  MPa at n=4), not just the peak.
+- **The stiffening depends on the element's shape, not the mesh as such.**
+  CalculiX expands CPS4R into a single reduced-integration brick (C3D8R) through
+  the thickness. A one-point brick needs hourglass control, artificial
+  stiffness that suppresses its zero-energy modes. Round the hole the elements
+  are about 0.5-2 mm wide, so a 0.01 mm brick is 50-200 times wider than it is
+  deep, and the hourglass stiffness swamps the real stiffness. A thicker
+  section (T = 0.1 mm) or a finer mesh (n=8) brings the shape ratio down and the
+  error falls with it; at T = 1 mm CPS4R matches CPS4. Hourglass control is the
+  only extra stiffness a C3D8R has, so it is the likely cause; how CalculiX
+  scales it has not been checked in the source code.
+- **Abaqus solves CPS4R in true 2D and does not have this problem**: 4.0% low
+  at n=4, the same as CalculiX at T = 1 mm (287.9 vs 287.8 MPa).
+- **Use CPS8/CPS8R for 2D work in CalculiX.** No single section thickness suits
+  every element: CPS4R needs a thick section, while CPS8 and CPS4 need a thin
+  one to stay in plane stress.
+
+#### Plate length
+
+Finite plate, CPS8 n=4: Kt_net = 2.5233 at L/W = 2,
+2.5206 at L/W = 3, 2.5206 at L/W = 6 and 2.5205 at L/W = 12. At L/W = 3, the
+length used in the benchmark, the ends are far enough from the hole (0.005% from
+the long-plate value).
