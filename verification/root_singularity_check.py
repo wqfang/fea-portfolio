@@ -111,7 +111,7 @@ def run(variant: str, level: int) -> float:
     deck = OUT / f"{job}.inp"
     loaded = sorted(loads)
     write_deck(deck, mesh, ETYPE, cant.E, cant.NU, root, {n: (2, f) for n, f in loads.items()}, loaded,
-               f"Root singularity check, variant {variant}, n={level}")
+               f"Root singularity check, variant {variant}, n={level}", solver="ccx")
     text = deck.read_text().replace("*NSET, NSET=FIXED", "*NSET, NSET=ROOT")
     text = text.replace("*BOUNDARY\nFIXED, 1, 3, 0.", "*BOUNDARY\n" + "\n".join(bcs))
     deck.write_text(text)

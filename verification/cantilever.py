@@ -98,7 +98,7 @@ def main() -> None:
             job = f"cant_{etype}_n{lvl}"
             heading = f"Cantilever benchmark, {etype}, level {lvl}, {mesh.n_nodes} nodes"
             deck = ccx_dir / f"{job}.inp"
-            write_deck(deck, mesh, etype, E, NU, fixed, cloads, tip_nodes, heading)
+            write_deck(deck, mesh, etype, E, NU, fixed, cloads, tip_nodes, heading, solver="ccx")
             if mesh.n_nodes <= ABAQUS_LE_NODE_CAP:
                 write_deck(abq_dir / f"{job}.inp", mesh, etype, E, NU, fixed, cloads, tip_nodes, heading)
                 abq_jobs.append(job)

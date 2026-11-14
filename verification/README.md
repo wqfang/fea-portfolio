@@ -9,7 +9,7 @@ studies. Units: mm, N, MPa.
 | 0 | Single-element uniaxial tension (`tension.inp`) | Material and boundary-condition setup; ccx vs Abaqus | Done: both match closed form |
 | 1 | End-loaded cantilever (`cantilever.py`) | Bending, shear locking, hourglassing, convergence rate | Done: CalculiX and Abaqus |
 | 2 | Plate with a hole (`plate_hole.py`) | Stress concentration factor Kt, stress convergence | Done |
-| 3 | Hertz sphere-on-flat contact | Contact pressure and radius | Planned |
+| 3 | Hertz sphere-on-flat contact (`hertz_contact.py`) | Contact pressure and radius | CalculiX done; Abaqus pending |
 | 4 | NAFEMS LE1 elliptic membrane | Standard benchmark from NAFEMS (National Agency for Finite Element Methods and Standards) | Planned |
 
 ## Setup
@@ -32,6 +32,23 @@ SPOOLES solver intermittently returned wrong answers with no error (the same dec
 gave 0.06 mm on one 8-thread run and 1.403 mm on others), and these models are
 too small to benefit from threads.
 
+**Viewing results in ParaView.** Every CalculiX run made through
+`fea_common.run_ccx` also converts its `.frd` results to VTK files next to the
+deck (`frd2vtu.py`, numpy only):
+- `<job>.vtu`: the mesh with the results of the last increment (DISP, STRESS,
+  von_Mises, and CONTACT for contact runs).
+- `<job>.pvd` and `<job>_inc<k>.vtu`: a time series of every increment, written
+  only when there is more than one (the contact runs), to step through the
+  loading.
+
+Open the `.vtu` (or `.pvd`) in ParaView, click Apply and colour by a result. For
+the deformed shape add Filters > Warp By Vector with DISP and a scale factor.
+CalculiX decks written by the scripts ask for U and S in the `.frd`; the Abaqus
+decks are unchanged. The `.vtu` and `.frd` files are not committed (see
+`.gitignore`); rerun a script, or run `uv run frd2vtu.py <file>.frd` on an
+existing result, to regenerate them. Pass `vtu=False` to `run_ccx` to skip the
+conversion.
+
 ## Contents
 
 - [Benchmark 1: cantilever beam](#benchmark-1-cantilever-beam)
@@ -51,6 +68,14 @@ too small to benefit from threads.
   - [Modelling checks (`plate_hole_sensitivity.py`)](#modelling-checks-plate_hole_sensitivitypy)
     - [Section thickness in CalculiX](#section-thickness-in-calculix)
     - [Plate length](#plate-length)
+- [Benchmark 3: Hertz contact, sphere on flat](#benchmark-3-hertz-contact-sphere-on-flat)
+  - [Model and references](#model-and-references-2)
+  - [Running the Abaqus cross-check](#running-the-abaqus-cross-check-2)
+  - [Results: CalculiX 2.23](#results-calculix-223-1)
+  - [Modelling checks (`hertz_sensitivity.py`)](#modelling-checks-hertz_sensitivitypy)
+    - [Contact size a/R](#contact-size-ar)
+    - [Penalty stiffness](#penalty-stiffness)
+    - [Body size](#body-size)
 
 ## Benchmark 1: cantilever beam
 
@@ -549,3 +574,166 @@ Finite plate, CPS8 n=4: Kt_net = 2.5233 at L/W = 2,
 2.5206 at L/W = 3, 2.5206 at L/W = 6 and 2.5205 at L/W = 12. At L/W = 3, the
 length used in the benchmark, the ends are far enough from the hole (0.005% from
 the long-plate value).
+
+## Benchmark 3: Hertz contact, sphere on flat
+
+### Model and references
+
+Axisymmetric, frictionless, linear elastic. A steel sphere (R = 10 mm) is
+pressed onto a steel flat (E = 200 GPa, nu = 0.3 for both). Each body is the part
+of the sphere or half-space within R of the initial contact point; the sphere's
+far boundary is pushed down by 0.025 mm and the flat's far boundary is held.
+This gives F = 1889 N, a contact radius of about 0.505 mm (a/R = 0.05) and a
+peak pressure of about 3535 MPa.
+
+Both bodies are meshed as an O-grid: a uniform square core round the contact
+point (1.25 a across) and a graded ring out to the far boundary. Each level
+halves the element size: a/h = 4, 8, 16, 32 elements across the contact radius
+at levels 1, 2, 4, 8. Element types: CAX4, CAX4R, CAX8, CAX8R in both solvers,
+and CAX4I in Abaqus only (CalculiX 2.23 has no CAX4I).
+
+```bash
+uv run hertz_contact.py                     # CalculiX sweep + plot, ~3 minutes
+uv run hertz_contact.py --levels 1 2 4      # quicker
+uv run hertz_contact.py --collect-abaqus    # after running the Abaqus decks
+```
+
+Outputs go to `runs/hertz/`: `results.csv`, `hertz_convergence.png`, and the
+decks.
+
+**Hertz solution**, for the contact force F measured in the model (identical
+materials, E* = E / (2 (1 - nu^2))):
+- contact radius a = (3 F R / (4 E*))^(1/3)
+- peak pressure p0 = 3 F / (2 pi a^2)
+- pressure distribution p(r) = p0 sqrt(1 - r^2/a^2)
+
+**Contact.** Surface-to-surface, sphere as slave, linear penalty
+(pressure = K x overclosure) with K = 1e8 MPa/mm, the same in both solvers. The
+overclosure at the peak is then p0/K = 0.035 um, 0.14% of the approach. CalculiX's
+node-to-surface contact did not converge on this model.
+
+**Measured quantities.**
+- **Force F**: the reaction on the sphere's far boundary. CalculiX expands
+  axisymmetric elements into a 2-degree wedge and reports forces for that wedge,
+  so its reaction is multiplied by 180. The script checks this against the
+  integral of the contact pressure (column `F_int_ratio`, which tends to 1 as
+  the mesh is refined: 1.01-1.03 at n=8).
+- **p0 and a**: fitted to the contact pressure (CPRESS) at the sphere's surface
+  nodes, using p^2 = p0^2 (1 - r^2/a^2) over 0.25 a < r < 0.9 a. The fit leaves
+  out the nodes next to the axis, where CalculiX's contact pressure is wrong
+  (below), and the contact edge, where a nodal pressure cannot follow the drop
+  to zero. `p_rms_err` is the RMS pressure error over the same range, as a
+  fraction of p0.
+
+### Running the Abaqus cross-check
+
+Learning Edition, 1,000-node cap. Eight decks fit under the cap: CAX4, CAX4R and
+CAX4I at levels 1 and 2, CAX8 and CAX8R at level 1.
+
+1. Copy `runs/hertz/abaqus/` to the Windows VM.
+2. Run `run_all.bat` in an Abaqus Command window in that folder.
+3. Copy the `.dat` files back into `runs/hertz/abaqus/`.
+4. Run `uv run hertz_contact.py --collect-abaqus`.
+
+The Abaqus decks print CPRESS with `*CONTACT PRINT` and the reaction total with
+`*NODE PRINT, TOTALS=ONLY`; the `.dat` parser for these tables has not yet been
+tested on real Abaqus output.
+
+### Results: CalculiX 2.23
+
+Error of the fitted peak pressure p0 and contact radius a vs Hertz (for the
+model's own F). At level 1 the linear elements have too few nodes in contact to
+fit.
+
+| Element | Quantity | n=1 (a/h=4) | n=2 (8) | n=4 (16) | n=8 (32) |
+|---|---|---|---|---|---|
+| CAX4 | p0 | n/a | +3.5% | +0.83% | +0.72% |
+| CAX4 | a | n/a | -0.79% | +0.37% | +0.02% |
+| CAX4R | p0 | n/a | +4.3% | +0.65% | +0.69% |
+| CAX4R | a | n/a | -2.0% | +0.38% | +0.004% |
+| CAX8 | p0 | +72% | +5.4% | +0.79% | +0.66% |
+| CAX8 | a | -17% | -3.5% | -0.26% | -0.14% |
+| CAX8R | p0 | +69% | +5.3% | +0.84% | +0.67% |
+| CAX8R | a | -16% | -2.4% | -0.10% | -0.11% |
+
+- **All four elements converge to the same answer.** At a/h = 32 the contact
+  radius is within 0.14% of Hertz and the pressure profile within 0.46-0.57%
+  RMS. The force is 1888.5-1890.9 N in every case.
+- **p0 levels off at +0.7% for every element.** An error that every element
+  type shares is not a mesh error. The modelling checks below trace it to
+  Hertz theory itself: it assumes a << R, and the gap grows in proportion to
+  a/R.
+- **Contact needs a finer mesh than stress.** With 4 elements across the contact
+  radius the quadratic elements are 70% out and the linear ones cannot be
+  fitted; about 16 elements across a are needed for 1% accuracy.
+- **Quadratic elements have no advantage here.** CAX8 and CAX8R are no more
+  accurate than CAX4 at the same element size, and worse on coarse meshes. The
+  contact pressure is resolved only at nodes, and quadratic surface-to-surface
+  contact spreads the pressure unevenly between corner and midside nodes.
+- **CAX4R works in CalculiX here,** unlike CPS4R in Benchmark 2. CalculiX expands
+  it into a wedge of thickness r x 2 degrees, which at the contact edge is
+  similar to the element size, so the expanded brick is not unusually thin.
+
+**CalculiX contact pressure next to the axis is wrong.** The node on the axis
+always has zero contact pressure, and the node next to it carries its share: 2x
+p0 for the linear elements and about 3x for the quadratic ones, at every mesh
+size and penalty. The likely cause is CalculiX's expansion of axisymmetric
+elements into a 3D wedge: on the axis the wedge's contact face has zero width,
+so the axis node gets no contact area. The total force is unaffected (the
+integrated pressure matches the reaction), and the effect fades by about 0.2 a,
+which is why the fit starts at 0.25 a. The near-axis contact pressure from
+CalculiX axisymmetric models should not be read as the peak pressure.
+
+### Modelling checks (`hertz_sensitivity.py`)
+
+```bash
+uv run hertz_sensitivity.py   # ~3 minutes; writes runs/hertz/sensitivity_results.csv
+```
+
+#### Contact size a/R
+
+CAX4, n=8. The core, the element size and the penalty are scaled with a, so that
+only a/R changes (a/h = 32 and overclosure/approach fixed).
+
+| a/R | p0 error | a error | RMS pressure error |
+|---|---|---|---|
+| 0.025 | +0.30% | +0.05% | 0.26% |
+| 0.05 | +0.72% | +0.02% | 0.57% |
+| 0.1 | +1.70% | -0.01% | 1.35% |
+
+The p0 error is close to proportional to a/R and extrapolates to about zero
+as a/R goes to 0. The FE model solves the exact geometry (a real sphere, finite
+bodies, the surface slope at the contact edge), while Hertz is the small-a/R
+limit, so this is the expected size of Hertz's own approximation, not a
+mesh or solver error. It is consistent with published first-order corrections
+to Hertz theory, which are linear in a/R.
+
+#### Penalty stiffness
+
+Fitted p0 error and RMS pressure error vs K (MPa/mm). E/h at n=8 is 1.3e7.
+
+| K | CAX4 n=8 p0 | CAX4 n=8 RMS | CAX8 n=4 p0 | CAX8 n=4 RMS | F (CAX4) |
+|---|---|---|---|---|---|
+| 1e7 | -0.49% | 0.36% | -0.35% | 0.38% | 1872.6 N |
+| 3e7 | +0.38% | 0.32% | +0.48% | 0.31% | 1886.0 N |
+| 1e8 | +0.72% | 0.57% | +0.79% | 0.52% | 1890.9 N |
+| 3e8 | +0.90% | 0.76% | +0.84% | 0.53% | 1892.3 N |
+| 1e9 | +1.06% | 1.03% | +0.72% | 0.70% | 1892.8 N |
+| 1e10 | +4.3% | 6.1% | +1.3% | 2.1% | 1893.0 N |
+
+- **The force converges as the penalty stiffens** (within 0.1% of the stiff
+  limit at K = 1e8), but the nodal pressure gets noisier: at K = 1e10 the
+  CAX4 profile has 6% RMS error. A soft penalty (1e7) lets the bodies
+  interpenetrate and lowers the pressure.
+- **K = 1e8, about 8 E/h at the finest mesh, is the compromise** used for the
+  benchmark. The +0.7% p0 at a/R = 0.05 sits between the soft and stiff ends of
+  the scan, and the a/R check shows it is mostly Hertz's own error.
+
+#### Body size
+
+Moving the far boundary from R to R/2 (10 a) changes p0 by 0.01% and a by
+0.02% (CAX4, n=8): the bodies are large enough to stand in for half-spaces. The
+force for the same approach rises by 4% (1961.6 vs 1890.9 N), because the
+approach of the far boundaries depends on the body size; that is why the
+benchmark compares a and p0 with Hertz for the measured force, not the
+force for a given approach.

@@ -10,6 +10,7 @@ import os
 import re
 import shutil
 import subprocess
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -130,8 +131,12 @@ def _id_lines(ids, per_line: int = 10) -> str:
 
 def write_deck(path: Path, mesh: HexMesh, etype: str, E: float, nu: float,
                fixed_nodes: list[int], cloads: dict[int, tuple[int, float]],
-               output_nset: list[int], heading: str) -> None:
-    """Write a linear-static deck readable by both ccx and Abaqus/Standard."""
+               output_nset: list[int], heading: str, solver: str = "abaqus") -> None:
+    """Write a linear-static deck readable by both ccx and Abaqus/Standard.
+
+    With solver="ccx" the deck also asks for displacements and stresses in the
+    .frd results file (for ParaView via frd2vtu); Abaqus decks are unchanged.
+    """
     out = [f"*HEADING\n{heading}", "*NODE, NSET=NALL"]
     out += [f"{n}, {x:.10g}, {y:.10g}, {z:.10g}" for n, (x, y, z) in mesh.nodes.items()]
     out.append(f"*ELEMENT, TYPE={etype}, ELSET=EALL")
@@ -147,7 +152,10 @@ def write_deck(path: Path, mesh: HexMesh, etype: str, E: float, nu: float,
             "*SOLID SECTION, ELSET=EALL, MATERIAL=MAT",
             "*STEP", "*STATIC", "*BOUNDARY", "FIXED, 1, 3, 0.", "*CLOAD"]
     out += [f"{n}, {dof}, {f:.12g}" for n, (dof, f) in sorted(cloads.items())]
-    out += ["*NODE PRINT, NSET=TIP", "U", "*END STEP", ""]
+    out += ["*NODE PRINT, NSET=TIP", "U"]
+    if solver == "ccx":
+        out += ["*NODE FILE", "U, S"]
+    out += ["*END STEP", ""]
     path.write_text("\n".join(out))
 
 
@@ -194,8 +202,13 @@ def _find_versioned_ccx(ccx: str) -> str:
     return found[max(found)]
 
 
-def run_ccx(deck: Path, ccx: str = "ccx", threads: int | None = None) -> Path:
-    """Run CalculiX on a deck; returns the .dat path. Raises on solver failure."""
+def run_ccx(deck: Path, ccx: str = "ccx", threads: int | None = None, vtu: bool = True) -> Path:
+    """Run CalculiX on a deck; returns the .dat path. Raises on solver failure.
+
+    With vtu=True (the default) the .frd results are also converted to .vtu
+    files for ParaView next to the deck (see frd2vtu.convert). A conversion
+    problem is reported as a warning and does not fail the run.
+    """
     exe = shutil.which(ccx) or _find_versioned_ccx(ccx)
     env = dict(os.environ)
     # Default to 1 thread: multithreaded SPOOLES in ccx 2.23 intermittently returns
@@ -208,6 +221,13 @@ def run_ccx(deck: Path, ccx: str = "ccx", threads: int | None = None) -> Path:
     dat = job.with_suffix(".dat")
     if res.returncode != 0 or "*ERROR" in res.stdout or not dat.exists():
         raise RuntimeError(f"ccx failed on {deck.name}; see {job.name}.ccx.log")
+    frd = job.with_suffix(".frd")
+    if vtu and frd.exists():
+        from frd2vtu import convert  # local import: frd2vtu is optional for the solver itself
+        try:
+            convert(frd)
+        except Exception as exc:  # never lose a solved run over a postprocessing problem
+            warnings.warn(f"could not convert {frd.name} to .vtu: {exc}")
     return dat
 
 

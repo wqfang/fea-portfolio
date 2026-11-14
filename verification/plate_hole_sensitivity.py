@@ -42,7 +42,7 @@ def solve(problem: str, etype: str, level: int, tag: str) -> dict[str, float]:
     run_ccx(deck)
     frd = deck.with_suffix(".frd")
     s = parse_frd_nodal_stress(frd)[peak]
-    disp = next(data for name, _, data in read_frd(frd)[2] if name == "DISP")
+    disp = next(data for name, _, data, *_ in read_frd(frd)[2] if name == "DISP")
     return {"sigma_peak": s[0], "szz_peak": s[2], "ux_side": disp[side][0], "uy_top": disp[peak][1]}
 
 

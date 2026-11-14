@@ -85,7 +85,8 @@ def ccx_result(level: int, nu: float) -> float:
     job = f"c3d8_n{level}_nu{nu:.1f}".replace(".", "p")
     deck = DIAG / "ccx" / f"{job}.inp"
     deck.parent.mkdir(parents=True, exist_ok=True)
-    write_deck(deck, mesh, "C3D8", cant.E, nu, fixed, cloads, tip_nodes, f"C3D8 formulation check, {job}")
+    write_deck(deck, mesh, "C3D8", cant.E, nu, fixed, cloads, tip_nodes, f"C3D8 formulation check, {job}",
+               solver="ccx")
     return cant.tip_deflection(parse_dat_displacements(run_ccx(deck)), tip_loads)
 
 

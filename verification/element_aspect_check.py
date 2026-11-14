@@ -54,7 +54,8 @@ def run(series: str, level: int) -> dict:
     loads = face_traction_loads(mesh, i_face=nx, total_force=cant.P)
     deck = OUT / f"{series}_n{level}.inp"
     write_deck(deck, mesh, ETYPE, cant.E, nu, fixed, {n: (2, f) for n, f in loads.items()},
-               sorted(loads), f"Element aspect check, {series} ({SERIES[series][0]}), n={level}")
+               sorted(loads), f"Element aspect check, {series} ({SERIES[series][0]}), n={level}",
+               solver="ccx")
     d = cant.tip_deflection(parse_dat_displacements(run_ccx(deck)), loads)
     le, h = cant.L / nx, cant.H / ny
     return {"series": series, "description": SERIES[series][0], "nu": nu, "level": level, "nx": nx, "ny": ny, "nz": nz,

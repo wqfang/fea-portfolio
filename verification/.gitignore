@@ -27,3 +27,4 @@ __pycache__/
 
 # ParaView files converted from .frd (regenerate with frd2vtu.py)
 runs/**/*.vtu
+runs/**/*.pvd
