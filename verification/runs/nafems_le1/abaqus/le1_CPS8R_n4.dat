@@ -1,0 +1,497 @@
+1
+
+   Abaqus Learning Edition 2026                                  Date 21-Nov-2026   Time 19:59:31
+   
+
+
+
+     PROCESSING PART, INSTANCE, AND ASSEMBLY INFORMATION
+   *******************************************************
+
+
+     END PROCESSING PART, INSTANCE, AND ASSEMBLY INFORMATION
+   ***********************************************************
+
+
+
+
+     OPTIONS BEING PROCESSED
+   ***************************
+
+
+  *heading
+          NAFEMS LE1 elliptic membrane, CPS8R, level 4, T = 100 mm, 329 nodes                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+  *material, name=MAT
+  *elastic
+  *solidsection, elset=EALL, material=MAT
+  *solidsection, elset=EALL, material=MAT
+
+ ***WARNING: FOR TWO-DIMENSIONAL MODELS, IF A NON-UNITY THICKNESS IS SPECIFIED 
+             FOR TWO-DIMENSIONAL SOLID ELEMENTS AND THESE ELEMENTS ARE INVOLVED 
+             IN AN INTERACTION SUCH AS CONTACT, THE SAME THICKNESS SHOULD BE 
+             SPECIFIED FOR THE OUT-OF-PLANE THICKNESS OF THE CORRESPONDING 
+             SURFACE UNDER *SURFACE INTERACTION.
+  *boundary
+  *boundary
+  *step, name=Step-1
+  *step, name=Step-1
+  *step, name=Step-1
+  *step, name=Step-1
+  *static
+  *boundary
+  *elprint, elset=EALL, position=AVERAGEDATNODES, summary=NO
+  *endstep
+  *step, name=Step-1
+  *static
+  *boundary
+  *cload
+  *endstep
+
+
+
+                            P R O B L E M   S I Z E
+
+
+          NUMBER OF ELEMENTS IS                                    96
+          NUMBER OF NODES IS                                      329
+          NUMBER OF NODES DEFINED BY THE USER                     329
+          TOTAL NUMBER OF VARIABLES IN THE MODEL                  658
+          (DEGREES OF FREEDOM PLUS MAX NO. OF ANY LAGRANGE MULTIPLIER
+           VARIABLES. INCLUDE *PRINT,SOLVE=YES TO GET THE ACTUAL NUMBER.)
+
+
+
+                              END OF USER INPUT PROCESSING
+
+
+
+     JOB TIME SUMMARY
+       USER TIME (SEC)      =     0.20    
+       SYSTEM TIME (SEC)    =      0.0    
+       TOTAL CPU TIME (SEC) =     0.20    
+       WALLCLOCK TIME (SEC) =            0
+1
+
+   Abaqus Learning Edition 2026                                  Date 21-Nov-2026   Time 19:59:32
+   
+
+     NAFEMS LE1 elliptic membrane, CPS8R, level 4, T = 100 mm, 329 nodes                       STEP    1  INCREMENT    1
+                                                                                          TIME COMPLETED IN THIS STEP   0.00    
+
+
+                        S T E P       1     S T A T I C   A N A L Y S I S
+
+
+                                                                                          
+
+     AUTOMATIC TIME CONTROL WITH -
+          A SUGGESTED INITIAL TIME INCREMENT OF                 1.00    
+          AND A TOTAL TIME PERIOD OF                            1.00    
+          THE MINIMUM TIME INCREMENT ALLOWED IS                1.000E-05
+          THE MAXIMUM TIME INCREMENT ALLOWED IS                 1.00    
+
+     LINEAR EQUATION SOLVER TYPE         DIRECT SPARSE
+  
+                   M E M O R Y   E S T I M A T E
+  
+ PROCESS      FLOATING PT       MINIMUM MEMORY        MEMORY TO
+              OPERATIONS           REQUIRED          MINIMIZE I/O
+             PER ITERATION           (MB)               (MB)
+  
+     1          1.08E+06               17                 24
+  
+ NOTE:
+      (1) SINCE ABAQUS DOES NOT PRE-ALLOCATE MEMORY AND ONLY ALLOCATES MEMORY AS NEEDED DURING THE ANALYSIS,
+          THE MEMORY REQUIREMENT PRINTED HERE CAN ONLY BE VIEWED AS A GENERAL GUIDELINE BASED ON THE BEST
+          KNOWLEDGE AVAILABLE AT THE BEGINNING OF A STEP BEFORE THE SOLUTION PROCESS HAS BEGUN.
+      (2) THE ESTIMATE IS NORMALLY UPDATED AT THE BEGINNING OF EVERY STEP. IT IS THE MAXIMUM VALUE OF THE
+          ESTIMATE FROM THE CURRENT STEP TO THE LAST STEP OF THE ANALYSIS, WITH UNSYMMETRIC SOLUTION TAKEN
+          INTO ACCOUNT IF APPLICABLE. 
+      (3) SINCE THE ESTIMATE IS BASED ON THE ACTIVE DEGREES OF FREEDOM IN THE FIRST ITERATION OF THE 
+          CURRENT STEP, THE MEMORY ESTIMATE MIGHT BE SIGNIFICANTLY DIFFERENT THAN ACTUAL USAGE FOR 
+          PROBLEMS WITH SUBSTANTIAL CHANGES IN ACTIVE DEGREES OF FREEDOM BETWEEN STEPS (OR EVEN WITHIN
+          THE SAME STEP). EXAMPLES ARE: PROBLEMS WITH SIGNIFICANT CONTACT CHANGES, PROBLEMS WITH MODEL
+          CHANGE, PROBLEMS WITH BOTH STATIC STEP AND STEADY STATE DYNAMIC PROCEDURES WHERE ACOUSTIC 
+          ELEMENTS WILL ONLY BE ACTIVATED IN THE STEADY STATE DYNAMIC STEPS.
+      (4) FOR MULTI-PROCESS EXECUTION, THE ESTIMATED VALUE OF FLOATING POINT OPERATIONS FOR EACH PROCESS
+          IS BASED ON AN INITIAL SCHEDULING OF OPERATIONS AND MIGHT NOT REFLECT THE ACTUAL FLOATING 
+          POINT OPERATIONS COMPLETED ON EACH PROCESS. OPERATIONS ARE DYNAMICALLY BALANCED DURING EXECUTION, 
+          SO THE ACTUAL BALANCE OF OPERATIONS BETWEEN PROCESSES IS EXPECTED TO BE BETTER THAN THE ESTIMATE
+          PRINTED HERE.
+      (5) THE UPPER LIMIT OF MEMORY THAT CAN BE ALLOCATED BY ABAQUS WILL IN GENERAL DEPEND ON THE VALUE OF
+          THE "MEMORY" PARAMETER AND THE AMOUNT OF PHYSICAL MEMORY AVAILABLE ON THE MACHINE. PLEASE SEE
+          THE "ABAQUS ANALYSIS USER'S MANUAL" FOR MORE DETAILS. THE ACTUAL USAGE OF MEMORY AND OF DISK
+          SPACE FOR SCRATCH DATA WILL DEPEND ON THIS UPPER LIMIT AS WELL AS THE MEMORY REQUIRED TO MINIMIZE
+          I/O. IF THE MEMORY UPPER LIMIT IS GREATER THAN THE MEMORY REQUIRED TO MINIMIZE I/O, THEN THE ACTUAL
+          MEMORY USAGE WILL BE CLOSE TO THE ESTIMATED "MEMORY TO MINIMIZE I/O" VALUE, AND THE SCRATCH DISK
+          USAGE WILL BE CLOSE-TO-ZERO; OTHERWISE, THE ACTUAL MEMORY USED WILL BE CLOSE TO THE PREVIOUSLY
+          MENTIONED MEMORY LIMIT, AND THE SCRATCH DISK USAGE WILL BE ROUGHLY PROPORTIONAL TO THE DIFFERENCE
+          BETWEEN THE ESTIMATED "MEMORY TO MINIMIZE I/O" AND THE MEMORY UPPER LIMIT. HOWEVER ACCURATE
+          ESTIMATE OF THE SCRATCH DISK SPACE IS NOT POSSIBLE.
+      (6) USING "*RESTART, WRITE" CAN GENERATE A LARGE AMOUNT OF DATA WRITTEN IN THE WORK DIRECTORY.
+
+
+                                INCREMENT     1 SUMMARY
+
+
+ TIME INCREMENT COMPLETED   1.00    ,  FRACTION OF STEP COMPLETED   1.00    
+ STEP TIME COMPLETED        1.00    ,  TOTAL TIME COMPLETED         1.00    
+
+
+
+                                                  E L E M E N T   O U T P U T
+
+
+
+
+
+   THE FOLLOWING TABLE IS PRINTED AVERAGED AT THE NODES FOR ELEMENT TYPE CPS8R AND ELEMENT SET EALL
+
+       NODE  FOOT-   S11         S22         S12         
+             NOTE 
+
+           1        1.277       90.67     -0.5126
+           2        3.650       85.75      -10.11
+           3        6.060       80.22      -19.97
+           4        10.78       68.39      -24.66
+           5        15.43       56.62      -28.97
+           6        18.50       44.79      -27.92
+           7        21.50       33.35      -26.76
+           8        21.63       25.13      -23.09
+           9        21.75       17.15      -19.50
+          10        19.82       12.47      -15.76
+          11        17.93       7.845      -12.11
+          12        15.16       5.490      -9.269
+          13        12.43       3.107      -6.469
+          14        9.615       2.034      -4.611
+          15        6.819      0.9279      -2.765
+          16        4.343      0.5064      -1.696
+          17        1.875      6.2222E-02 -0.6294
+          18      -9.9126E-02 -5.3738E-02 -0.1271
+          19       -2.070     -0.1831      0.3767
+          20       -3.488     -0.1768      0.5014
+          21       -4.904     -0.1785      0.6278
+          22       -5.754     -0.1445      0.5240
+          23       -6.602     -0.1157      0.4214
+          24       -6.885     -9.8741E-02  0.2105
+          25       -7.167     -8.5876E-02  9.4072E-03
+          26        8.317       71.27     -0.1818
+          27        9.815       65.79      -11.56
+          28        13.17       52.04      -18.70
+          29        15.94       35.95      -19.97
+          30        16.40       22.33      -17.06
+          31        14.50       12.82      -12.62
+          32        11.17       6.926      -8.405
+          33        7.404       3.534      -5.131
+          34        3.862       1.683      -2.870
+          35       0.9164      0.7209      -1.452
+          36       -1.255      0.2500     -0.6456
+          37       -2.575      4.3084E-02 -0.2288
+          38       -3.017     -1.4301E-02  8.1426E-03
+          39        14.58       52.84      7.2725E-02
+          40        13.94       52.27      -1.892
+          41        13.28       51.78      -3.864
+          42        12.24       49.51      -6.379
+          43        11.27       47.14      -8.964
+          44        11.01       42.68      -11.12
+          45        10.79       38.11      -13.22
+          46        11.02       32.68      -13.86
+          47        11.22       27.28      -14.44
+          48        11.17       22.47      -13.70
+          49        11.07       17.73      -12.96
+          50        10.47       14.23      -11.59
+          51        9.861       10.76      -10.24
+          52        8.895       8.460      -8.834
+          53        7.931       6.170      -7.447
+          54        6.863       4.754      -6.262
+          55        5.801       3.333      -5.088
+          56        4.831       2.494      -4.177
+          57        3.867       1.649      -3.271
+          58        3.115       1.176      -2.592
+          59        2.367      0.6977      -1.915
+          60        1.897      0.4603      -1.396
+          61        1.429      0.2182     -0.8780
+          62        1.269      0.1475     -0.4390
+          63        1.111      7.2594E-02  7.2030E-03
+          64        14.88       45.39      3.7651E-02
+          65        13.71       44.71      -2.382
+          66        11.34       41.84      -5.819
+          67        9.692       35.91      -9.473
+          68        9.256       27.87      -11.65
+          69        9.232       19.79      -11.74
+          70        8.896       13.12      -10.35
+          71        8.103       8.233      -8.321
+          72        7.046       4.914      -6.242
+          73        5.979       2.774      -4.365
+          74        5.099       1.474      -2.741
+          75        4.529      0.7821      -1.317
+          76        4.332      0.5654      5.3294E-03
+          77        15.83       37.20      6.0927E-02
+          78        15.11       37.23     -0.1314
+          79        14.34       37.36     -0.3044
+          80        12.70       37.12      -1.268
+          81        11.07       36.87      -2.301
+          82        9.650       35.50      -4.040
+          83        8.283       34.04      -5.790
+          84        7.736       31.34      -7.433
+          85        7.213       28.58      -9.031
+          86        7.331       25.20      -9.854
+          87        7.434       21.83      -10.64
+          88        7.723       18.62      -10.57
+          89        7.990       15.43      -10.50
+          90        8.159       12.84      -9.846
+          91        8.317       10.26      -9.205
+          92        8.318       8.367      -8.294
+          93        8.316       6.476      -7.394
+          94        8.210       5.182      -6.421
+          95        8.106       3.888      -5.455
+          96        7.971       3.068      -4.507
+          97        7.839       2.244      -3.562
+          98        7.735       1.795      -2.657
+          99        7.633       1.342      -1.753
+         100        7.594       1.200     -0.8763
+         101        7.558       1.054      3.4042E-03
+         102        15.49       32.34      5.4721E-02
+         103        14.09       32.71      0.3325
+         104        10.89       32.97     -0.9713
+         105        7.965       31.48      -3.962
+         106        6.643       27.61      -7.237
+         107        6.830       22.17      -9.396
+         108        7.728       16.51      -9.984
+         109        8.673       11.57      -9.297
+         110        9.378       7.722      -7.837
+         111        9.811       4.953      -6.002
+         112        10.04       3.126      -4.025
+         113        10.14       2.095      -2.013
+         114        10.17       1.762      1.2517E-03
+         115        15.25       27.33      6.2947E-02
+         116        14.59       27.63      0.5432
+         117        13.89       27.97       1.062
+         118        12.29       28.52      0.7891
+         119        10.69       29.08      0.4654
+         120        9.112       29.06     -0.7968
+         121        7.575       29.00      -2.090
+         122        6.776       27.87      -3.782
+         123        6.016       26.71      -5.464
+         124        6.107       24.63      -6.843
+         125        6.208       22.54      -8.194
+         126        6.847       20.06      -8.858
+         127        7.475       17.59      -9.503
+         128        8.267       15.22      -9.456
+         129        9.045       12.87      -9.405
+         130        9.754       10.91      -8.844
+         131        10.45       8.958      -8.286
+         132        10.99       7.483      -7.415
+         133        11.53       6.011      -6.550
+         134        11.89       5.007      -5.517
+         135        12.25       4.001      -4.488
+         136        12.45       3.424      -3.379
+         137        12.66       2.843      -2.273
+         138        12.72       2.656      -1.136
+         139        12.79       2.466     -9.5598E-04
+         140        14.70       23.73      5.7939E-02
+         141        13.44       24.46       1.325
+         142        10.47       25.92       1.074
+         143        7.523       26.55      -1.133
+         144        6.025       25.24      -4.348
+         145        6.282       22.05      -7.213
+         146        7.749       17.85      -8.867
+         147        9.681       13.58      -9.154
+         148        11.54       9.846      -8.327
+         149        13.07       6.920      -6.742
+         150        14.16       4.866      -4.696
+         151        14.80       3.659      -2.402
+         152        15.01       3.261     -2.9362E-03
+         153        14.17       20.08      5.2979E-02
+         154        13.60       20.48      0.8136
+         155        13.01       20.92       1.610
+         156        11.63       21.83       1.681
+         157        10.24       22.76       1.714
+         158        8.839       23.45      0.7955
+         159        7.455       24.12     -0.1516
+         160        6.719       23.97      -1.689
+         161        6.013       23.79      -3.227
+         162        6.168       22.70      -4.743
+         163        6.341       21.59      -6.242
+         164        7.181       19.86      -7.253
+         165        8.019       18.13      -8.246
+         166        9.175       16.21      -8.584
+         167        10.32       14.29      -8.914
+         168        11.49       12.51      -8.645
+         169        12.64       10.73      -8.375
+         170        13.63       9.276      -7.654
+         171        14.61       7.825      -6.936
+         172        15.34       6.775      -5.920
+         173        16.07       5.727      -4.906
+         174        16.51       5.099      -3.718
+         175        16.95       4.471      -2.531
+         176        17.10       4.263      -1.265
+         177        17.24       4.054     -4.9571E-03
+         178        13.58       17.08      5.1043E-02
+         179        12.54       17.98       1.708
+         180        10.04       20.03       1.989
+         181        7.538       21.83      0.3598
+         182        6.311       22.17      -2.534
+         183        6.800       20.71      -5.524
+         184        8.660       17.93      -7.663
+         185        11.21       14.58      -8.548
+         186        13.83       11.32      -8.217
+         187        16.11       8.562      -6.921
+         188        17.83       6.518      -4.952
+         189        18.88       5.275      -2.572
+         190        19.24       4.859     -6.5165E-03
+         191        13.00       14.07      4.9545E-02
+         192        12.55       14.53      0.9132
+         193        12.07       15.02       1.812
+         194        10.96       16.15       2.059
+         195        9.837       17.30       2.275
+         196        8.719       18.43       1.592
+         197        7.618       19.55      0.8824
+         198        7.097       20.06     -0.4730
+         199        6.601       20.55      -1.835
+         200        6.918       20.21      -3.326
+         201        7.252       19.85      -4.806
+         202        8.273       18.80      -5.953
+         203        9.297       17.74      -7.085
+         204        10.70       16.31      -7.641
+         205        12.10       14.88      -8.187
+         206        13.57       13.39      -8.128
+         207        15.03       11.91      -8.064
+         208        16.32       10.60      -7.486
+         209        17.61       9.296      -6.908
+         210        18.61       8.301      -5.954
+         211        19.59       7.307      -5.000
+         212        20.21       6.692      -3.807
+         213        20.82       6.077      -2.614
+         214        21.03       5.869      -1.307
+         215        21.23       5.661     -8.0849E-03
+         216        12.45       11.36      4.7844E-02
+         217        11.62       12.36       1.830
+         218        9.677       14.80       2.379
+         219        7.795       17.38       1.144
+         220        7.073       18.89      -1.413
+         221        7.952       18.79      -4.302
+         222        10.19       17.27      -6.607
+         223        13.19       14.90      -7.817
+         224        16.33       12.28      -7.827
+         225        19.14       9.878      -6.787
+         226        21.29       8.008      -4.954
+         227        22.64       6.833      -2.603
+         228        23.10       6.433     -9.2304E-03
+         229        11.90       8.651      4.5952E-02
+         230        11.55       9.158      0.9309
+         231        11.18       9.698       1.850
+         232        10.35       10.99       2.182
+         233        9.518       12.30       2.487
+         234        8.738       13.77       1.960
+         235        7.970       15.22       1.410
+         236        7.746       16.24      0.2154
+         237        7.541       17.24     -0.9877
+         238        8.088       17.50      -2.395
+         239        8.648       17.74      -3.797
+         240        9.864       17.28      -4.969
+         241        11.08       16.81      -6.131
+         242        12.69       15.87      -6.795
+         243        14.29       14.92      -7.449
+         244        15.97       13.78      -7.524
+         245        17.64       12.64      -7.594
+         246        19.15       11.55      -7.132
+         247        20.66       10.46      -6.668
+         248        21.83       9.582      -5.788
+         249        23.00       8.707      -4.908
+         250        23.74       8.147      -3.750
+         251        24.47       7.587      -2.592
+         252        24.72       7.395      -1.296
+         253        24.97       7.204     -1.0364E-02
+         254        11.40       6.069      4.4601E-02
+         255        10.80       7.163       1.823
+         256        9.416       9.928       2.490
+         257        8.230       13.14       1.514
+         258        8.139       15.58     -0.7528
+         259        9.517       16.61      -3.464
+         260        12.16       16.20      -5.769
+         261        15.54       14.77      -7.127
+         262        19.06       12.85      -7.348
+         263        22.23       10.92      -6.507
+         264        24.69       9.319      -4.818
+         265        26.24       8.281      -2.553
+         266        26.77       7.923     -1.1017E-02
+         267        10.90       3.483      4.2945E-02
+         268        10.66       4.038      0.9029
+         269        10.41       4.626       1.796
+         270        9.864       6.080       2.157
+         271        9.315       7.549       2.495
+         272        8.897       9.305       2.069
+         273        8.489       11.06       1.621
+         274        8.605       12.50      0.5572
+         275        8.736       13.93     -0.5157
+         276        9.555       14.71      -1.824
+         277        10.38       15.47      -3.130
+         278        11.81       15.54      -4.273
+         279        13.24       15.59      -5.408
+         280        15.02       15.11      -6.111
+         281        16.80       14.62      -6.805
+         282        18.65       13.84      -6.958
+         283        20.48       13.06      -7.104
+         284        22.14       12.21      -6.727
+         285        23.80       11.37      -6.347
+         286        25.10       10.65      -5.538
+         287        26.39       9.930      -4.728
+         288        27.21       9.451      -3.621
+         289        28.02       8.975      -2.514
+         290        28.30       8.807      -1.257
+         291        28.58       8.642     -1.1672E-02
+         292        10.47      0.9187      4.4242E-02
+         293        10.09       2.117       1.736
+         294        9.280       5.213       2.427
+         295        8.829       9.015       1.613
+         296        9.440       12.30     -0.4220
+         297        11.39       14.31      -2.939
+         298        14.47       14.91      -5.162
+         299        18.19       14.37      -6.555
+         300        22.00       13.16      -6.888
+         301        25.43       11.73      -6.186
+         302        28.10       10.46      -4.625
+         303        29.78       9.605      -2.465
+         304        30.36       9.303     -1.2328E-02
+         305        10.03      -1.653      4.9016E-02
+         306        9.903      -1.043      0.8435
+         307        9.761     -0.3978       1.676
+         308        9.504       1.229       2.030
+         309        9.246       2.872       2.359
+         310        9.203       4.925       1.994
+         311        9.171       6.971       1.607
+         312        9.650       8.825      0.6449
+         313        10.15       10.66     -0.3262
+         314        11.26       11.91      -1.538
+         315        12.39       13.15      -2.747
+         316        14.03       13.69      -3.835
+         317        15.69       14.23      -4.916
+         318        17.63       14.18      -5.615
+         319        19.58       14.12      -6.305
+         320        21.55       13.69      -6.493
+         321        23.52       13.26      -6.675
+         322        25.29       12.68      -6.353
+         323        27.05       12.10      -6.027
+         324        28.43       11.55      -5.276
+         325        29.81       11.00      -4.524
+         326        30.68       10.62      -3.470
+         327        31.55       10.24      -2.417
+         328        31.85       10.10      -1.208
+         329        32.15       9.965     -1.3162E-02
+
+
+          THE ANALYSIS HAS BEEN COMPLETED
+
+
+
+                              ANALYSIS COMPLETE
+                              WITH      1 WARNING MESSAGES ON THE DAT FILE
+
+
+
+     JOB TIME SUMMARY
+       USER TIME (SEC)      =     0.30    
+       SYSTEM TIME (SEC)    =      0.0    
+       TOTAL CPU TIME (SEC) =     0.30    
+       WALLCLOCK TIME (SEC) =            0
