@@ -9,8 +9,8 @@ studies. Units: mm, N, MPa.
 | 0 | Single-element uniaxial tension (`tension.inp`) | Material and boundary-condition setup; ccx vs Abaqus | Done: both match closed form |
 | 1 | End-loaded cantilever (`cantilever.py`) | Bending, shear locking, hourglassing, convergence rate | Done: CalculiX and Abaqus |
 | 2 | Plate with a hole (`plate_hole.py`) | Stress concentration factor Kt, stress convergence | Done |
-| 3 | Hertz sphere-on-flat contact (`hertz_contact.py`) | Contact pressure and radius | CalculiX done; Abaqus pending |
-| 4 | NAFEMS LE1 elliptic membrane | Standard benchmark from NAFEMS (National Agency for Finite Element Methods and Standards) | Planned |
+| 3 | Hertz sphere-on-flat contact (`hertz_contact.py`) | Contact pressure and radius | Done: CalculiX and Abaqus |
+| 4 | NAFEMS LE1 elliptic membrane (`nafems_le1.py`) | Standard benchmark from NAFEMS (National Agency for Finite Element Methods and Standards): stress at a curved free edge on a mapped mesh | CalculiX done; Abaqus pending |
 
 ## Setup
 
@@ -72,10 +72,16 @@ conversion.
   - [Model and references](#model-and-references-2)
   - [Running the Abaqus cross-check](#running-the-abaqus-cross-check-2)
   - [Results: CalculiX 2.23](#results-calculix-223-1)
+  - [Results: Abaqus cross-check (Learning Edition 2026)](#results-abaqus-cross-check-learning-edition-2026-1)
   - [Modelling checks (`hertz_sensitivity.py`)](#modelling-checks-hertz_sensitivitypy)
     - [Contact size a/R](#contact-size-ar)
     - [Penalty stiffness](#penalty-stiffness)
     - [Body size](#body-size)
+- [Benchmark 4: NAFEMS LE1 elliptic membrane](#benchmark-4-nafems-le1-elliptic-membrane)
+  - [Model and references](#model-and-references-3)
+  - [What to watch for](#what-to-watch-for)
+  - [Running the Abaqus cross-check](#running-the-abaqus-cross-check-3)
+  - [Results: CalculiX 2.23](#results-calculix-223-2)
 
 ## Benchmark 1: cantilever beam
 
@@ -84,6 +90,14 @@ conversion.
 Steel beam, 200 x 10 x 10 mm, clamped at x = 0, uniform shear traction totalling
 P = 100 N on the free end. Five element types (C3D8, C3D8R, C3D8I, C3D20, C3D20R)
 at four mesh levels (1, 2, 4, 8 elements through the depth; cube-shaped elements).
+
+![Cantilever problem schematic](runs/cantilever/cantilever_schematic.png)
+
+![Cantilever geometry, boundary conditions and variables](runs/cantilever/cantilever_geometry.png)
+
+The schematic shows the problem; the second figure shows the model as meshed
+(actual level-2 mesh). Both are drawn by `uv run cantilever_geometry.py` (no
+solver run needed).
 
 ```bash
 uv run cantilever.py                    # full sweep, ~1 minute on a laptop
@@ -350,6 +364,15 @@ is a structured O-grid round the hole, graded towards it; each level halves
 every element size. Element types: CPS4, CPS4R, CPS8, CPS8R in both solvers,
 and CPS4I in Abaqus only (CalculiX 2.23 rejects it). Levels 1, 2, 4, 8.
 
+![Plate-with-hole problem schematic](runs/plate_hole/plate_hole_schematic.png)
+
+![Plate-with-hole geometry, boundary conditions and variables](runs/plate_hole/plate_hole_geometry.png)
+
+The schematic shows the problem; the second figure shows the quarter models as
+meshed (actual level-1 meshes). Both are drawn by `uv run plate_hole_geometry.py`
+(no solver run needed). The Kirsch tractions in panel (a) of the second figure
+are drawn to scale; on the top edge they are nearly zero.
+
 ```bash
 uv run plate_hole.py                     # CalculiX sweep + plot, ~10 s
 uv run plate_hole.py --collect-abaqus    # after running the Abaqus decks
@@ -586,6 +609,17 @@ far boundary is pushed down by 0.025 mm and the flat's far boundary is held.
 This gives F = 1889 N, a contact radius of about 0.505 mm (a/R = 0.05) and a
 peak pressure of about 3535 MPa.
 
+![Hertz contact problem schematic](runs/hertz/hertz_schematic.png)
+
+![Hertz model geometry, boundary conditions and variables](runs/hertz/hertz_geometry.png)
+
+The schematic shows the problem (contact radius exaggerated); the second figure
+shows the model as meshed (actual level-1 mesh). Both are drawn by
+`uv run hertz_geometry.py` (no solver run needed). Panel (c) of the second figure
+shows the half-space design values for the
+prescribed approach (a = 0.50 mm, p0 = 3498 MPa); the model's measured values
+are slightly higher because its bodies are finite.
+
 Both bodies are meshed as an O-grid: a uniform square core round the contact
 point (1.25 a across) and a graded ring out to the far boundary. Each level
 halves the element size: a/h = 4, 8, 16, 32 elements across the contact radius
@@ -636,8 +670,11 @@ CAX4I at levels 1 and 2, CAX8 and CAX8R at level 1.
 4. Run `uv run hertz_contact.py --collect-abaqus`.
 
 The Abaqus decks print CPRESS with `*CONTACT PRINT` and the reaction total with
-`*NODE PRINT, TOTALS=ONLY`; the `.dat` parser for these tables has not yet been
-tested on real Abaqus output.
+`*NODE PRINT, TOTALS=YES`. The contact table lists only the slave nodes near the
+contact, each with a status column (CL closed, OP open), and Abaqus prints 4
+significant figures. Abaqus reports axisymmetric forces for the full 360 degrees,
+so its reaction is used as is; the integrated contact pressure confirms this
+(`F_int_ratio` = 1.00 at level 2).
 
 ### Results: CalculiX 2.23
 
@@ -683,6 +720,54 @@ so the axis node gets no contact area. The total force is unaffected (the
 integrated pressure matches the reaction), and the effect fades by about 0.2 a,
 which is why the fit starts at 0.25 a. The near-axis contact pressure from
 CalculiX axisymmetric models should not be read as the peak pressure.
+
+### Results: Abaqus cross-check (Learning Edition 2026)
+
+The eight decks under the 1,000-node cap, same mesh, contact settings and
+penalty as CalculiX. Errors vs Hertz for the model's own F; CalculiX in
+brackets. `p(axis)` is the contact pressure at the axis node over the Hertz p0.
+
+| Element | Level (a/h) | F (N) | p0 error | a error | RMS pressure error | p(axis) / p0 |
+|---|---|---|---|---|---|---|
+| CAX4 | 1 (4) | 2001 (2053) | n/a | n/a | 5.9% (10.2%) | 0.95 (0) |
+| CAX4 | 2 (8) | 1916 (1930) | +0.02% (+3.5%) | +2.6% (-0.79%) | 2.3% (2.6%) | 0.97 (0) |
+| CAX4R | 1 (4) | 1968 (2254) | n/a | n/a | 3.1% (32%) | 1.05 (0) |
+| CAX4R | 2 (8) | 1908 (1945) | +0.46% (+4.3%) | +0.49% (-2.0%) | 1.2% (3.0%) | 0.99 (0) |
+| CAX4I | 1 (4) | 1993 | n/a | n/a | 7.6% | 0.95 |
+| CAX4I | 2 (8) | 1914 | -0.06% | +3.3% | 2.9% | 0.97 |
+| CAX8 | 1 (4) | 1886 (1883) | -2.1% (+72%) | +9.4% (-17%) | 7.9% (45%) | 1.01 (0) |
+| CAX8R | 1 (4) | 1878 (1876) | -1.8% (+69%) | +8.3% (-16%) | 6.3% (43%) | 1.04 (0) |
+
+The converged force from the finest CalculiX meshes is 1888.5-1890.9 N.
+
+- **The two solvers agree on the force.** On the same mesh the reactions differ
+  by 0.2% for the quadratic elements and 0.7-2% for the linear ones at level 2,
+  and both approach the converged 1889 N as the mesh is refined.
+- **Abaqus has no near-axis artifact.** Its axis node carries 0.95-1.05 p0, as
+  Hertz predicts, where CalculiX gives zero there and about 2-3 p0 at the next
+  node. This supports the explanation above: the artifact comes from CalculiX's
+  expansion of axisymmetric elements into a wedge, not from the mesh or the
+  contact settings, which are the same in both decks.
+- **Abaqus's contact pressure is consistent with its force on coarse meshes;
+  CalculiX's is not.** The integrated Abaqus pressure matches the reaction to
+  0.2% at level 2 (`F_int_ratio` 1.001-1.002), against 1.12-1.18 for CalculiX.
+  So at the same mesh the Abaqus pressure profile is much closer to Hertz: p0
+  within 0.5% at a/h = 8, where CalculiX is 3.5-4.3% high.
+- **Abaqus quadratic elements work on the coarsest mesh.** At a/h = 4, CAX8 and
+  CAX8R are within 2% on p0, where CalculiX is 70% out. The difference is in the
+  contact formulation (how each solver shares the pressure between corner and
+  midside nodes), since the mesh and penalty are the same.
+- **The contact radius is the slower quantity in Abaqus.** The fitted a is
+  2.6-3.3% large for CAX4 and CAX4I at a/h = 8 (CAX4R 0.5%): with eight
+  elements across the contact the fit window holds only five nodes, and the
+  ones near the edge probably pull the ellipse fit outward. Finer meshes are
+  over the node cap, so this cannot be checked further.
+- **CAX4I gives the same answer as CAX4.** Incompatible modes cure bending
+  locking; a contact problem dominated by compression does not need them.
+- **The limit of this cross-check:** the node cap stops Abaqus at a/h = 8 for
+  linear and 4 for quadratic elements, so it cannot confirm the +0.7% p0 offset
+  that CalculiX converges to at a/h = 32. That offset is explained by a/R in
+  the modelling checks below, which applies to both solvers alike.
 
 ### Modelling checks (`hertz_sensitivity.py`)
 
@@ -737,3 +822,184 @@ force for the same approach rises by 4% (1961.6 vs 1890.9 N), because the
 approach of the far boundaries depends on the body size; that is why the
 benchmark compares a and p0 with Hertz for the measured force, not the
 force for a given approach.
+
+## Benchmark 4: NAFEMS LE1 elliptic membrane
+
+### Model and references
+
+LE1 is the first of the linear-elastic standard benchmarks published by NAFEMS
+(National Agency for Finite Element Methods and Standards) in *The Standard
+NAFEMS Benchmarks* (1990), and one of the most widely used checks of 2D solid
+elements. A thin elliptic membrane is loaded by outward pressure on its outer
+edge, and the answer is a single number: the stress where the inner edge is
+most sharply curved. It tests what Benchmarks 1-3 did not: elements that are
+not rectangles (the mapped mesh skews and tapers them) on a curved boundary,
+with the result read at a free-edge node.
+
+![NAFEMS LE1 problem schematic](runs/nafems_le1/nafems_le1_schematic.png)
+
+**Problem.** Plane stress, quarter model with symmetry. NAFEMS gives the
+geometry in metres; here it is in mm like the rest of the suite.
+
+| Item | Value |
+|---|---|
+| Inner edge | ellipse (x/2000)^2 + (y/1000)^2 = 1, traction free |
+| Outer edge | ellipse (x/3250)^2 + (y/2750)^2 = 1, uniform outward normal pressure p = 10 MPa |
+| Edge A-B (x = 0) | symmetry, u_x = 0 |
+| Edge D-C (y = 0) | symmetry, u_y = 0 |
+| Thickness | T = 100 mm |
+| Material | Linear elastic, isotropic: E = 210 GPa, nu = 0.3 (steel-like; NAFEMS names no material) |
+| Target | sigma_yy at D (2000, 0) = **92.7 MPa** |
+
+**The material does not affect the target.** In true 2D plane stress with only
+tractions applied, the stress field depends on E and nu only if a hole carries
+a net force (Michell's theorem). Here the inner edge is traction free, so
+sigma_yy(D) is the same for any E, nu and thickness; E only scales the
+displacements. The exception is CalculiX, which models plane-stress elements as
+3D bricks of the section thickness, so its answer can depend slightly on nu and
+T (see [What to watch for](#what-to-watch-for)).
+
+**Where 92.7 MPa comes from.** The target is published in *The Standard NAFEMS
+Benchmarks* (NAFEMS report TNSB, Rev. 3, 1990), and the test goes back to
+Barlow and Davies, *Selected FE Benchmarks in Structural and Thermal Analysis*
+(NAFEMS report FEBSTA, 1986). The derivation is meant to be in Davies, Fenner
+and Lewis, *Background to Benchmarks* (NAFEMS, 1993), which is not freely
+available and was not checked here. COMSOL's LE1 model says the value "is based
+on an analytical result"; the other sources found do not say how it was
+obtained. Independent, highly converged solutions agree with it to within
+0.05%:
+
+| Source | Method | sigma_yy(D) (MPa) |
+|---|---|---|
+| COMSOL 6.4 LE1 model | h-refinement to about 0.9 million DOF | 92.658 |
+| ESRD StressCheck guide (2018) | p-extension, 144 quads / 216 triangles | 92.70 / 92.66 |
+| Seamplex (FeenoX/Fino) LE1 case | adaptive second-order mesh | 92.692 |
+
+So 92.7 is right to its three figures, but as a convergence reference it
+carries a rounding uncertainty of about 0.05%. The study will therefore also
+extrapolate its own converged value, as Benchmark 2 did for the finite plate,
+and report errors against both.
+
+Sources: [COMSOL elliptic membrane model](https://doc.comsol.com/6.4/doc/com.comsol.help.models.sme.elliptic_membrane/elliptic_membrane.html),
+[ESRD NAFEMS linear-elastic benchmarks guide](https://www.esrd.com/wp-content/uploads/dlm_uploads/Benchmarks-Guide-Standard-NAFEMS-Benchmarks-Linear-Elastic-Tests.pdf),
+[Seamplex LE1 case](https://www.seamplex.com/fino/cases/010-nafems-le1/),
+[Abaqus Benchmarks Guide LE1](https://abaqus-docs.mit.edu/2017/English/SIMACAEBMKRefMap/simabmk-c-le1.htm),
+[Ansys Verification Manual C2](https://ansyshelp.ansys.com/public/Views/Secured/corp/v251/en/ans_vm/Hlp_V_VMC2.html).
+
+![NAFEMS LE1 model, mesh construction and refinement levels](runs/nafems_le1/nafems_le1_geometry.png)
+
+**Mesh.** A structured mapping between the two ellipses: a point at
+parametric angle t sits at (2000 cos t, 1000 sin t) on the inner ellipse and
+(3250 cos t, 2750 sin t) on the outer one, and each mesh line joins the two
+and is divided evenly. Level n has 2n elements across the membrane and 3n round
+it, so levels 1 and 2 have 6 and 24 elements, the element counts of the NAFEMS
+coarse and fine meshes. NAFEMS places the interior nodes of those meshes
+differently, so the coarse and fine results here are not element-for-element
+comparisons with published LE1 tables; the study is a convergence sweep instead.
+Quadratic elements take their midside nodes from the same mapping, so their
+curved edges lie on the ellipses.
+
+The outward pressure is applied as consistent nodal forces along each element
+edge's own normal, as a solver's pressure load would be; their resultant matches
+p T times the projected edge length exactly at every level (`uv run nafems_le1.py`
+prints the check).
+
+**Sweep.** CPS4, CPS4R, CPS8 and CPS8R in CalculiX at levels 1, 2, 4, 8, 16, 32,
+64 (6 to 24,576 elements), each at the specified 100 mm section and at a
+0.01 mm section (see [What to watch for](#what-to-watch-for)). CPS4I runs in
+Abaqus only (CalculiX 2.23 rejects it). The stress at D is the averaged nodal
+sigma_yy, as a postprocessor would report it.
+
+```bash
+uv run nafems_le1.py                      # CalculiX sweep + plot, ~2 minutes
+uv run nafems_le1.py --levels 1 2 4       # quicker
+uv run nafems_le1.py --collect-abaqus     # after running the Abaqus decks
+uv run nafems_le1.py --check-loads        # mesh sizes and pressure-resultant check
+```
+
+Outputs go to `runs/nafems_le1/`: `results.csv`, `le1_convergence.png`, and
+the decks (`ccx/le1_<element>_n<level>_T100.inp` and `_T0p01.inp`,
+`abaqus/le1_<element>_n<level>.inp`).
+
+Both figures are drawn by `uv run nafems_le1_geometry.py` (no solver run needed).
+
+### What to watch for
+
+Lessons from Benchmarks 1-3 that apply here:
+
+- **Section thickness in CalculiX.** CalculiX expands plane-stress elements
+  into 3D bricks of the section thickness (Benchmark 2). LE1's section is
+  100 mm, and the inner edge at D curves with radius b^2/a = 1000^2/2000 =
+  500 mm, so T is 0.2 of the local radius. Benchmark 2 found a +0.2% peak shift
+  at T/a = 0.1 and +0.85% at 0.5, so the 100 mm section may move the CalculiX
+  answer by a few tenths of a percent. The sweep will use the specified 100 mm
+  and check a thin section as well.
+- **Free-edge stress.** sigma_yy(D) is read at a node on a free curved edge,
+  where the averaged nodal stress is an extrapolation from the integration
+  points. The coarse linear meshes will be furthest off here.
+- **Element distortion.** Near D the elements are tapered and curved more than
+  anywhere else in the suite, which is the point of the benchmark: it separates
+  elements that tolerate distortion from those that do not.
+
+### Running the Abaqus cross-check
+
+Learning Edition, 1,000-node cap. Eighteen decks fit under the cap, all at the
+specified 100 mm section (Abaqus solves true plane stress, where the thickness
+only scales the loads): CPS4, CPS4R and CPS4I at levels 1, 2, 4, 8 (up to 425
+nodes), and CPS8 and CPS8R at levels 1, 2, 4 (up to 329 nodes).
+
+1. Copy `runs/nafems_le1/abaqus/` to the Windows VM.
+2. Run `run_all.bat` in an Abaqus Command window in that folder.
+3. Copy the `.dat` files back into `runs/nafems_le1/abaqus/`.
+4. Run `uv run nafems_le1.py --collect-abaqus`.
+
+### Results: CalculiX 2.23
+
+![NAFEMS LE1 convergence](runs/nafems_le1/le1_convergence.png)
+
+sigma_yy at D (MPa) at the specified 100 mm section, with the 0.01 mm section in
+brackets. Levels 1 and 2 have the NAFEMS coarse and fine element counts.
+
+| Level (elements) | CPS4 | CPS4R | CPS8 | CPS8R |
+|---|---|---|---|---|
+| 1 (6) | 65.31 (65.28) | 24.82 (9.94) | 81.63 (81.54) | 79.40 (79.38) |
+| 2 (24) | 83.58 (83.48) | 50.33 (8.98) | 89.92 (89.69) | 87.62 (87.56) |
+| 4 (96) | 92.49 (92.23) | 69.03 (8.74) | 93.01 (92.59) | 90.77 (90.65) |
+| 8 (384) | 95.05 (94.53) | 79.44 (8.69) | 93.35 (92.85) | 92.13 (91.93) |
+| 16 (1,536) | 95.05 (94.35) | 85.58 (8.74) | 93.18 (92.74) | 92.69 (92.42) |
+| 32 (6,144) | 94.40 (93.73) | 89.05 (9.83) | 93.06 (92.69) | 92.90 (92.59) |
+| 64 (24,576) | 93.81 (93.26) | 90.94 (22.03) | 93.01 (92.67) | 92.96 (92.64) |
+
+- **The converged plane-stress answer is 92.658 MPa.** Richardson extrapolation
+  of the three finest thin-section CPS8 meshes (levels 16, 32, 64; observed
+  order 1.63) gives 92.658, the same as COMSOL's converged value and within
+  ESRD's 92.66-92.70. The NAFEMS target of 92.7 is 0.045% above it, which is
+  its rounding to three figures. The coarser CPS8 levels oscillate (92.59, 92.85,
+  92.74 at levels 4, 8, 16), so the extrapolation needs levels 16-64.
+- **The specified 100 mm section moves CalculiX's answer by +0.38%.** At
+  T = 100 mm, CPS8 converges to 93.01 MPa and CPS8R to 92.96, against 92.67 and
+  92.64 at T = 0.01 mm. CalculiX solves a 100 mm thick 3D slab, and at D, where
+  the edge curves with radius 500 mm, it is not in plane stress: sigma_zz at D is
+  1.24 MPa at level 64 (CPS8), against 0.000 at the thin section. This is the
+  effect found in Benchmark 2, and it is larger than the rounding of the NAFEMS
+  target: a CalculiX result at the specified thickness that matches 92.7
+  "exactly" is partly a coincidence of mesh error and thickness effect.
+- **Quadratic elements: 1% needs about 100 elements.** Thin-section CPS8 is
+  within 0.07% of the converged value at level 4 (96 elements); CPS8R needs
+  level 8 (-0.8%) to level 16 (-0.25%). At the NAFEMS fine-mesh count (24
+  elements) CPS8 is about 3% low. COMSOL reports 92.7 for quadratic quads on the
+  NAFEMS fine mesh itself, so with this few elements the placement of the nodes
+  near D matters: the NAFEMS mesh is laid out differently from the even mapping
+  used here.
+- **CPS4 overshoots and comes down slowly.** It passes the answer between
+  levels 4 and 8, peaks 2.0% high at level 8 (thin section) and is still 0.64% high at level 64.
+  Even at the thin section CPS4 shows sigma_zz at D (0.98 MPa at level 16,
+  0.32 at level 64, against zero for CPS8), so CalculiX's expanded linear brick
+  is not exactly in plane stress either. The Abaqus CPS4 and CPS4I runs will
+  show how much of the overshoot is the element and how much CalculiX's
+  expansion.
+- **CPS4R is not usable in CalculiX here.** At 100 mm it converges from far
+  below: -46% at the NAFEMS fine-mesh count, -1.9% at 24,576 elements. At
+  0.01 mm it gives 9-22 MPa at every level, a fraction of the answer. This is
+  the failure found in Benchmark 2: CalculiX expands CPS4R into a
+  reduced-integration brick, which fails when it is much thinner than wide.

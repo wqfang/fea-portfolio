@@ -208,10 +208,14 @@ def abaqus_results(dat_path: Path) -> tuple[float, dict[int, float]]:
     if not totals:
         raise ValueError(f"no RF total in {dat_path}")
     F = -float(totals[-1][1].replace("D", "E"))
+    # last CPRESS table (final increment). Rows: slave node, status (CL closed / OP open),
+    # CPRESS, COPEN; Abaqus prints only the slave nodes near the contact, and writes
+    # numbers with a trailing point ("3427.")
     p = {}
     tail = text[text.rindex("CPRESS"):]
+    num = r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[EeDd][-+]?\d+)?"
     for line in tail.splitlines()[1:]:
-        m = re.match(r"^\s*(\d+)\s+(" + _NUM + r")\s+(" + _NUM + r")\s*$", line)
+        m = re.match(r"^\s*(\d+)\s+(?:[A-Z]{2}\s+)?(" + num + r")\s+(" + num + r")\s*$", line)
         if m:
             p[int(m.group(1))] = float(m.group(2).replace("D", "E"))
         elif p and not line.strip():
