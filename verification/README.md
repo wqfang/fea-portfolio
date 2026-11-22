@@ -10,7 +10,7 @@ studies. Units: mm, N, MPa.
 | 1 | End-loaded cantilever (`cantilever.py`) | Bending, shear locking, hourglassing, convergence rate | Done: CalculiX and Abaqus |
 | 2 | Plate with a hole (`plate_hole.py`) | Stress concentration factor Kt, stress convergence | Done |
 | 3 | Hertz sphere-on-flat contact (`hertz_contact.py`) | Contact pressure and radius | Done: CalculiX and Abaqus |
-| 4 | NAFEMS LE1 elliptic membrane (`nafems_le1.py`) | Standard benchmark from NAFEMS (National Agency for Finite Element Methods and Standards): stress at a curved free edge on a mapped mesh | CalculiX done; Abaqus pending |
+| 4 | NAFEMS LE1 elliptic membrane (`nafems_le1.py`) | Standard benchmark from NAFEMS (National Agency for Finite Element Methods and Standards): stress at a curved free edge on a mapped mesh | Done: CalculiX and Abaqus |
 
 ## Setup
 
@@ -82,6 +82,8 @@ conversion.
   - [What to watch for](#what-to-watch-for)
   - [Running the Abaqus cross-check](#running-the-abaqus-cross-check-3)
   - [Results: CalculiX 2.23](#results-calculix-223-2)
+  - [Results: Abaqus cross-check (Learning Edition 2026)](#results-abaqus-cross-check-learning-edition-2026-2)
+  - [Why CPS4 overshoots (`le1_straight_edge_check.py`)](#why-cps4-overshoots-le1_straight_edge_checkpy)
 
 ## Benchmark 1: cantilever beam
 
@@ -995,11 +997,125 @@ brackets. Levels 1 and 2 have the NAFEMS coarse and fine element counts.
   levels 4 and 8, peaks 2.0% high at level 8 (thin section) and is still 0.64% high at level 64.
   Even at the thin section CPS4 shows sigma_zz at D (0.98 MPa at level 16,
   0.32 at level 64, against zero for CPS8), so CalculiX's expanded linear brick
-  is not exactly in plane stress either. The Abaqus CPS4 and CPS4I runs will
-  show how much of the overshoot is the element and how much CalculiX's
-  expansion.
+  is not exactly in plane stress either. The Abaqus runs below show that part
+  of the overshoot is CalculiX's expansion: Abaqus CPS4 peaks lower.
 - **CPS4R is not usable in CalculiX here.** At 100 mm it converges from far
   below: -46% at the NAFEMS fine-mesh count, -1.9% at 24,576 elements. At
   0.01 mm it gives 9-22 MPa at every level, a fraction of the answer. This is
   the failure found in Benchmark 2: CalculiX expands CPS4R into a
   reduced-integration brick, which fails when it is much thinner than wide.
+
+### Results: Abaqus cross-check (Learning Edition 2026)
+
+All 18 decks under the 1,000-node cap, at the specified 100 mm section, on the
+same meshes and nodal loads as CalculiX. The Abaqus runs are the x markers in
+the convergence plot above. sigma_yy at D (MPa), with CalculiX at the 0.01 mm
+section in brackets (the like-for-like plane-stress comparison), except CPS4R,
+where the brackets are CalculiX at 100 mm because its thin-section result is
+unusable. CalculiX has no CPS4I run. Abaqus prints four significant figures.
+
+| Level (elements) | CPS4 | CPS4R | CPS4I | CPS8 | CPS8R |
+|---|---|---|---|---|---|
+| 1 (6) | 66.25 (65.28) | 39.08 (24.82) | 56.74 | 82.14 (81.54) | 79.60 (79.38) |
+| 2 (24) | 83.60 (83.48) | 55.97 (50.33) | 77.91 | 89.85 (89.69) | 87.66 (87.56) |
+| 4 (96) | 91.71 (92.23) | 69.86 (69.03) | 88.71 | 92.58 (92.59) | 90.67 (90.65) |
+| 8 (384) | 93.91 (94.53) | 79.53 (79.44) | 92.32 | | |
+
+Error against the converged 92.658 MPa:
+
+| Level (elements) | CPS4 | CPS4R | CPS4I | CPS8 | CPS8R |
+|---|---|---|---|---|---|
+| 1 (6) | -28.5% | -57.8% | -38.8% | -11.4% | -14.1% |
+| 2 (24) | -9.8% | -39.6% | -15.9% | -3.0% | -5.4% |
+| 4 (96) | -1.0% | -24.6% | -4.3% | -0.08% | -2.1% |
+| 8 (384) | +1.4% | -14.2% | -0.36% | | |
+
+- **Abaqus confirms that the 100 mm shift is CalculiX's 3D expansion.** Abaqus
+  solves true plane stress, where the thickness only scales the loads, and its
+  CPS8 gives 92.58 MPa at level 4, against 92.59 for CalculiX at 0.01 mm and
+  93.01 at 100 mm. CPS8 and CPS8R agree with thin-section CalculiX to 0.01-0.2%
+  at levels 2 and 4 (0.3-0.7% at level 1). So the converged 92.658 MPa is the
+  plane-stress answer of both codes, and the +0.38% at the specified thickness
+  belongs to CalculiX alone.
+- **CPS4R works in Abaqus, but slowly.** Abaqus's CPS4R shows no thin-section
+  failure, which confirms that the 9-22 MPa CalculiX gives at 0.01 mm comes
+  from expanding the element into a thin reduced-integration brick. It is
+  still the worst element here: -40% at the NAFEMS fine-mesh count and -14% at
+  384 elements. With one integration point, the stress is sampled at the
+  element centre, and extrapolating it to the free edge at D misses the steep
+  gradient there. At levels 4 and 8 it agrees with CalculiX at 100 mm to 1.2%
+  and 0.1%.
+- **Abaqus CPS4 overshoots less than CalculiX's.** It passes the answer
+  between levels 4 and 8, as in CalculiX, but is +1.4% at level 8 against
+  +2.0% (CalculiX 0.01 mm) and +2.6% (100 mm). Part of the CalculiX overshoot
+  is therefore its expanded linear brick, which also shows sigma_zz at D. Most
+  of the Abaqus overshoot comes from the straight element edges; see
+  [Why CPS4 overshoots](#why-cps4-overshoots-le1_straight_edge_checkpy).
+- **CPS4I is the best linear element on a fine enough mesh.** Incompatible
+  modes give -0.36% at 384 elements, where CPS4 is 1.4% high. On coarser
+  meshes CPS4I is further off than CPS4 (-4.3% against -1.0% at 96 elements),
+  but CPS4 is close there only because it is crossing the answer on its way
+  to the overshoot. CPS4I approaches from below and has not crossed by
+  level 8.
+- **At the NAFEMS fine-mesh count (24 elements)** the ranking is CPS8 (-3.0%),
+  CPS8R (-5.4%), CPS4 (-9.8%), CPS4I (-15.9%), CPS4R (-40%), in Abaqus as in
+  CalculiX. None reaches the 92.7 target on this mapped mesh; quadratic
+  elements need about 100 elements for 1%.
+- **The limit of this cross-check:** the node cap stops Abaqus at 384 linear
+  or 96 quadratic elements, so it cannot follow CPS4 back down, or check the
+  extrapolated value directly. The agreement with thin-section CalculiX on
+  every quadratic run is what carries the converged value across.
+
+### Why CPS4 overshoots (`le1_straight_edge_check.py`)
+
+CPS4 elements have straight edges, so a CPS4 mesh models the elliptic hole as a
+polygon with its corners on the ellipse. D is one of those corners. Instead of
+a smooth edge with a 500 mm radius, the material at D sees a slight re-entrant
+corner, which concentrates stress. The corner flattens as the mesh is refined:
+the boundary turns through 56 degrees at D at level 1, 15 at level 4, 7.5 at
+level 8 and 1.9 at level 32.
+
+The check isolates this geometry error. It runs CPS8 twice on the same mapped
+mesh at the 0.01 mm section: once as normal, with the midside nodes on the
+curves, and once with every midside node moved to the midpoint of its chord.
+The second mesh has exactly the CPS4 polygon but keeps the quadratic field.
+
+```bash
+uv run le1_straight_edge_check.py   # ~1 minute; writes runs/nafems_le1/straight_edge/results.csv
+```
+
+Error in sigma_yy at D against the converged 92.658 MPa (CPS4 columns from the
+sweeps above):
+
+| Level (elements) | Corner turn at D | CPS8, curved edges | CPS8, straight edges | CPS4, Abaqus | CPS4, CalculiX 0.01 mm |
+|---|---|---|---|---|---|
+| 1 (6) | 56.4 deg | -12.0% | **+5.6%** | -28.5% | -29.6% |
+| 2 (24) | 29.5 deg | -3.2% | **+5.3%** | -9.8% | -9.9% |
+| 4 (96) | 14.9 deg | -0.07% | **+2.8%** | -1.0% | -0.46% |
+| 8 (384) | 7.5 deg | +0.20% | **+1.0%** | +1.4% | +2.0% |
+| 16 (1,536) | 3.7 deg | +0.09% | **+0.30%** | | +1.8% |
+| 32 (6,144) | 1.9 deg | +0.03% | **+0.08%** | | +1.2% |
+
+- **The polygon alone puts the stress at D too high at every level.** The
+  excess falls by a factor of 3-4 per halving of the element size, close to
+  second order, and is negligible by level 32.
+- **That explains the shape of the CPS4 curve.** On coarse meshes the
+  element's own error is large and negative (four-node elements cannot follow
+  the steep gradient at D) and hides the geometry error. The element error
+  shrinks faster and crosses zero between levels 4 and 8, which leaves the
+  geometry error: CPS4 ends up high and comes back down only as the corner
+  flattens.
+- **In Abaqus the polygon accounts for most of the overshoot:** about 1.0 of
+  the +1.4% at level 8. The remaining ~0.4% is the element's own error,
+  probably from extrapolating the integration-point stresses out to the corner
+  node; it was not separated further.
+- **In CalculiX it does not.** After subtracting the geometry error, the thin
+  CPS4 is still +1.0% to +1.5% high at levels 8-32 (and +0.6% at level 64, where
+  the geometry error is negligible), and that remainder fades much more slowly.
+  This fits the sigma_zz that CalculiX's expanded brick shows at D even at
+  0.01 mm. Abaqus CPS4 is true plane stress and does not have it. The node cap
+  stops Abaqus at level 8, so its curve beyond that cannot be compared.
+- **Takeaway.** With linear elements, a peak stress on a curved free edge
+  carries a geometry error as well as an element error, and can converge from
+  above. Quadratic elements with the midside nodes on the curve avoid the
+  geometry error, which is the reason CPS8 here is close on 96 elements.
