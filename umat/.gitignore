@@ -1,0 +1,18 @@
+.venv/
+__pycache__/
+build/
+bin/
+# solver scratch; keep decks, .dat and results.csv
+runs/**/*.frd
+runs/**/*.sta
+runs/**/*.cvg
+runs/**/*.12d
+runs/**/*.ccx.log
+runs/**/spooles.out
+runs/**/*.odb
+runs/**/*.msg
+runs/**/*.prt
+runs/**/*.com
+runs/**/*.sim
+runs/**/*.log
+runs/**/*.lck

@@ -1,0 +1,10 @@
+[project]
+name = "fea-umat"
+version = "0.1.0"
+description = "Abaqus-format UMATs verified in CalculiX and against Abaqus built-in models"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+]

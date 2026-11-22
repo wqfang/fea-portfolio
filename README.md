@@ -18,7 +18,7 @@ Three principles shape the work:
 | # | Project | Physics | Solvers | Status |
 |---|---|---|---|---|
 | 1 | [Verification and convergence suite](verification/README.md) | Linear static, contact | ccx + Abaqus | **Done**: 5 benchmarks |
-| 2 | User material (UMAT) for a device polymer | Finite-strain hyperelastic + viscoelastic | ccx (UMAT host) + Abaqus (built-in reference) | In progress |
+| 2 | [User material (UMAT) for a device polymer](umat/README.md) | Finite-strain hyperelastic + viscoelastic | ccx (UMAT host) + Abaqus (built-in reference) | **In progress**: Neo-Hookean done, viscoelasticity next |
 | 3 | Ball drop on cover glass | Impact, contact, explicit dynamics | Abaqus/Explicit + ccx | Planned |
 | 4 | Automated design of experiments (DOE) + machine-learning surrogate | Parametric contact or bending | ccx + Python | Planned |
 | 5 | Board warpage under thermal load (optional) | Thermo-mechanical, thermal-expansion mismatch | ccx | Planned |
@@ -96,6 +96,23 @@ differently with the same deck.
 | User subroutines (UMAT) | Compiled into the solver | Refused by the Learning Edition | UMATs run in CalculiX; Abaqus built-in models are the reference |
 | Size limit | None (laptop memory) | 1,000 nodes | Fine meshes in CalculiX only |
 
+## Project 2: user material (UMAT) for a device polymer
+
+User material subroutines written to the Abaqus/Standard interface in Fortran,
+compiled into CalculiX, and verified at three levels: a material-point driver,
+single-element tests against closed-form solutions, and cross-checks against
+the built-in models in CalculiX and Abaqus. The Abaqus Learning Edition refuses
+user subroutines, so CalculiX hosts the UMAT and the same decks with Abaqus's
+built-in model are the independent reference.
+
+| Step | Material | Status |
+|---|---|---|
+| 2.1 | Compressible Neo-Hookean hyperelasticity | Done |
+| 2.2 | Finite-strain viscoelasticity (Prony series) on top of 2.1 | Next |
+| 2.3 | Part-level model (e.g. button dome or O-ring) and parameter fit to test data | Planned |
+
+Details: [`umat/README.md`](umat/README.md).
+
 ## Quick start
 
 Requirements: [uv](https://docs.astral.sh/uv/) and CalculiX (`ccx`). Abaqus is
@@ -130,6 +147,12 @@ verification/                   Project 1
   frd2vtu.py                     CalculiX results to VTK
   tension*.inp                   benchmark 0
   runs/                          committed results, plots and Abaqus decks
+umat/                            Project 2
+  README.md                      write-up and verification results
+  src/                           UMAT Fortran source
+  build_ccx_umat.sh              builds CalculiX with the UMAT compiled in
+  ref/                           Python reference implementation of the material
+  tests/                         material-point driver and single-element tests
 ```
 
 ## Tools
